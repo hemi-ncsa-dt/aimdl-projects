@@ -4,9 +4,11 @@ import { createProject } from '@/services/api';
 import { useAuthStore } from '@/stores/auth';
 import type { Project } from '@/types';
 import { storeToRefs } from 'pinia';
+import { useRouter } from 'vue-router';
 
 const authStore = useAuthStore();
 const { user, token } = storeToRefs(authStore);
+const router = useRouter();
 
 const projectName = ref('');
 const projectDescription = ref('');
@@ -31,14 +33,15 @@ async function submitProposal() {
         const newProjectData = {
             name: projectName.value,
             description: projectDescription.value,
-            owner: user.value,
-            members: [],
+            //owner: user.value,
+            //members: [],
             samples: [],
         };
-        await createProject(newProjectData, token.value);
+        const newProject = await createProject(newProjectData, token.value);
         success.value = true;
         projectName.value = '';
         projectDescription.value = '';
+        router.push({ name: 'proposal-detail', params: { id: newProject._id } });
     } catch (e: any) {
         error.value = e.message;
     } finally {

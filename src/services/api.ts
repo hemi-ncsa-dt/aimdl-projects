@@ -31,7 +31,7 @@ export async function getCurrentUser(token: string): Promise<Person | null> {
 }
 
 export async function getProjects(token: string): Promise<Project[]> {
-    const response = await fetch(`${API_BASE_URL}/projects`, {
+    const response = await fetch(`${API_BASE_URL}/project`, {
         headers: {
             'Girder-Token': token,
         },
@@ -40,7 +40,7 @@ export async function getProjects(token: string): Promise<Project[]> {
 }
 
 export async function getProject(id: string, token: string): Promise<Project> {
-    const response = await fetch(`${API_BASE_URL}/projects/${id}`, {
+    const response = await fetch(`${API_BASE_URL}/project/${id}`, {
         headers: {
             'Girder-Token': token,
         },
@@ -48,8 +48,9 @@ export async function getProject(id: string, token: string): Promise<Project> {
     return handleResponse<Project>(response);
 }
 
-export async function createProject(projectData: Omit<Project, 'id' | 'createdAt' | 'updatedAt'>, token: string): Promise<Project> {
-    const response = await fetch(`${API_BASE_URL}/projects`, {
+export async function createProject(projectData: Omit<Project, 'owner' | 'created' | 'updated'>, token: string): Promise<Project> {
+    console.log('Creating project with data:', projectData);
+    const response = await fetch(`${API_BASE_URL}/project`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',

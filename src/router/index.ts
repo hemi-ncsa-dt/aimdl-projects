@@ -5,12 +5,22 @@ const router = createRouter({
   routes: [
     {
       path: '/',
-      redirect: '/proposal',
+      redirect: '/proposals',
     },
     {
-      path: '/proposal',
-      name: 'proposal',
-      component: () => import('../views/ProposalView.vue'),
+      path: '/proposals',
+      name: 'proposals',
+      component: () => import('../views/ProposalsView.vue'),
+    },
+    {
+      path: '/proposal/new',
+      name: 'create-proposal',
+      component: () => import('../views/CreateProposalView.vue'),
+    },
+    {
+      path: '/proposal/:id',
+      name: 'proposal-detail',
+      component: () => import('../views/ProposalDetailView.vue'),
     },
     {
       path: '/login',

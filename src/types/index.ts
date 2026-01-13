@@ -1,14 +1,15 @@
-import type { St } from "vue-router/dist/router-CWoNjPRp.mjs";
+export type ProjectStatus = 'draft' | 'under review' | 'accepted' | 'rejected';
 
 export interface Project {
-    id: string; // DOI
+    _id: string; // DOI
     name: string;
     description: string;
     owner: Person;
     members: Person[];
     samples: Sample[];
-    createdAt: Date;
-    updatedAt: Date;
+    status: ProjectStatus;
+    created: Date;
+    updated: Date;
 }
 
 export interface Sample {
@@ -48,4 +49,50 @@ export interface Group {
     public: boolean;
     name: string;
     members: Person[];
+}
+
+export interface Folder {
+    _id: string;
+    _modelType: "folder";
+    _accessLevel: number;
+    baseParentId: string;
+    baseParentType: string;
+    created: Date;
+    creatorId: string;
+    description: string;
+    meta: Record<string, any>;
+    name: string;
+    parentCollection: string;
+    parentId: string;
+    public: boolean;
+    size: number;
+    updated: Date;
+}
+
+export interface Item {
+    _id: string;
+    _modelType: "item";
+    _accessLevel: number;
+    baseParentId: string;
+    baseParentType: string;
+    created: Date;
+    creatorId: string;
+    description: string;
+    folderId: string;
+    meta: Record<string, any>;
+    name: string;
+    size: number;
+    updated: Date;
+}
+
+export interface File {
+    _id: string;
+    _modelType: "file";
+    _accessLevel: number;
+    name: string;
+    itemId: string;
+    size: number;
+    created: Date;
+    creatorId: string;
+    public: boolean;
 }
