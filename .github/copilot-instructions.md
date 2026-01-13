@@ -17,7 +17,10 @@ This is a Vue.js single-page application that serves as the frontend for managin
 ## Core Concepts
 
 - **Project:** The highest-level organizational unit. A project is initiated via a proposal and is assigned a unique identifier (DOI). It acts as a container for all related entities.
-- **Collection:** There is a one-to-one mapping between a Project and a Collection in the backend. When a new project is created, a corresponding collection should be created via an API call.
+- **Collection:** Is a backend model that represents a container of folders. Each project has a corresponding collection created automatically when the project is created.
+- **Folder:** Represents a directory within a collection. Folders can contain items and other folders.
+- **Item:** Represents a file or data object stored within a folder. It's parent can only be a folder.
+- **File:** Represents blob of data associated with an item. Item can have multiple files.
 - **Samples:** Represent physical materials. A key feature is that a single sample can be associated with multiple projects.
 - **Groups & People:** The system manages users and their roles within project groups. It's handled via the backend API.
 

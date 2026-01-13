@@ -48,30 +48,128 @@ async function submitProposal() {
 </script>
 
 <template>
-    <div class="proposal-view">
-        <div class="header">
-            <h1>Submit a New Project Proposal</h1>
-            <button @click="authStore.logout()">Logout</button>
+    <div class="proposal-container">
+        <div class="proposal-card">
+            <h1 class="proposal-title">Submit a New Project Proposal</h1>
+            <form @submit.prevent="submitProposal">
+                <div class="form-group">
+                    <label for="projectName">Project Name</label>
+                    <input id="projectName" v-model="projectName" type="text" />
+                </div>
+                <div class="form-group">
+                    <label for="projectDescription">Project Description</label>
+                    <textarea id="projectDescription" v-model="projectDescription"></textarea>
+                </div>
+                <div v-if="error" class="error-message">{{ error }}</div>
+                <div v-if="success" class="success-message">
+                    Project proposal submitted successfully!
+                </div>
+                <button class="submit-button" type="submit" :disabled="submitting">
+                    {{ submitting ? 'Submitting...' : 'Submit Proposal' }}
+                </button>
+            </form>
         </div>
-        <form @submit.prevent="submitProposal">
-            <div class="form-group">
-                <label for="projectName">Project Name</label>
-                <input id="projectName" v-model="projectName" type="text" />
-            </div>
-            <div class="form-group">
-                <label for="projectDescription">Project Description</label>
-                <textarea id="projectDescription" v-model="projectDescription"></textarea>
-            </div>
-            <div v-if="error" class="error-message">{{ error }}</div>
-            <div v-if="success" class="success-message">
-                Project proposal submitted successfully!
-            </div>
-            <button type="submit" :disabled="submitting">
-                {{ submitting ? 'Submitting...' : 'Submit Proposal' }}
-            </button>
-        </form>
     </div>
 </template>
+
+<style scoped>
+.proposal-container {
+    display: flex;
+    justify-content: center;
+    padding-top: 32px;
+}
+
+.proposal-card {
+    width: 100%;
+    max-width: 800px;
+    padding: 32px;
+    background-color: white;
+    border-radius: 4px;
+    box-shadow: 0 2px 1px -1px rgba(0, 0, 0, 0.2),
+        0 1px 1px 0 rgba(0, 0, 0, 0.14),
+        0 1px 3px 0 rgba(0, 0, 0, 0.12);
+}
+
+.proposal-title {
+    font-size: 24px;
+    font-weight: 400;
+    margin-top: 0;
+    margin-bottom: 24px;
+}
+
+.form-group {
+    margin-bottom: 24px;
+}
+
+label {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    color: rgba(0, 0, 0, 0.6);
+}
+
+input,
+textarea {
+    display: block;
+    width: 100%;
+    padding: 10px;
+    font-size: 16px;
+    border: 1px solid rgba(0, 0, 0, 0.42);
+    border-radius: 4px;
+    transition: border-color 0.3s;
+    box-sizing: border-box;
+}
+
+input:focus,
+textarea:focus {
+    outline: none;
+    border-color: #6200ee;
+    border-width: 2px;
+    padding: 9px;
+}
+
+textarea {
+    min-height: 120px;
+    resize: vertical;
+}
+
+.submit-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 24px;
+    font-size: 14px;
+    font-weight: 500;
+    text-transform: uppercase;
+    color: #fff;
+    background-color: #6200ee;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.submit-button:hover {
+    background-color: #3700b3;
+}
+
+.submit-button:disabled {
+    background-color: rgba(0, 0, 0, 0.12);
+    color: rgba(0, 0, 0, 0.37);
+    cursor: not-allowed;
+}
+
+.error-message {
+    color: #b00020;
+    margin-bottom: 16px;
+}
+
+.success-message {
+    color: #00c853;
+    margin-bottom: 16px;
+}
+</style>
 
 <style scoped>
 .proposal-view {
