@@ -48,7 +48,7 @@ export async function getProject(id: string, token: string): Promise<Project> {
     return handleResponse<Project>(response);
 }
 
-export async function createProject(projectData: Omit<Project, 'owner' | 'created' | 'updated'>, token: string): Promise<Project> {
+export async function createProject(projectData: Omit<Project, '_id' | 'owner' | 'created' | 'updated'>, token: string): Promise<Project> {
     console.log('Creating project with data:', projectData);
     const response = await fetch(`${API_BASE_URL}/project`, {
         method: 'POST',

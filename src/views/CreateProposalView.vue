@@ -34,7 +34,8 @@ async function submitProposal() {
             name: projectName.value,
             description: projectDescription.value,
             //owner: user.value,
-            //members: [],
+            status: "draft" as const,
+            members: [],
             samples: [],
         };
         const newProject = await createProject(newProjectData, token.value);
