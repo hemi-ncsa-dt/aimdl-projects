@@ -62,6 +62,7 @@ export async function createProject(projectData: Omit<Project, '_id' | 'owner' |
 }
 
 export async function updateProject(id: string, projectData: Partial<Project>, token: string): Promise<Project> {
+    console.log('Updating project with data:', JSON.stringify(projectData, null, 2));
     const response = await fetch(`${API_BASE_URL}/project/${id}`, {
         method: 'PUT',
         headers: {

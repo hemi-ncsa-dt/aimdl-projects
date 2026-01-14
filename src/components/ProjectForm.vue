@@ -41,22 +41,25 @@ const save = async () => {
             samples: samples || [],
         });
     } else {
-        await projectStore.updateProject(project.value._id!, project.value);
+        const { name, description, status, members, samples } = project.value;
+        await projectStore.updateProject(project.value._id!, { name, description, status, members, samples });
     }
     router.push('/proposals');
 };
 
 const submitForReview = async () => {
     project.value.status = 'under review';
-    await save();
+    const { name, description, status, members, samples } = project.value;
+    await projectStore.updateProject(project.value._id!, { name, description, status, members, samples });
+    router.push('/proposals');
 };
 </script>
 
 <template>
-    <v-form @submit.prevent="save">
+    <v-form>
         <v-text-field v-model="project.name" label="Project Name"></v-text-field>
         <v-textarea v-model="project.description" label="Project Description"></v-textarea>
-        <v-btn type="submit" color="primary">Save Draft</v-btn>
+        <v-btn @click="save" color="primary">Save Draft</v-btn>
         <v-btn @click="submitForReview" color="secondary">Submit for Review</v-btn>
     </v-form>
 </template>

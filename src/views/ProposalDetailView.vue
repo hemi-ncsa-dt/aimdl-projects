@@ -15,6 +15,9 @@
                     <button v-if="project.status === 'draft'" @click="goToEdit" class="edit-button">
                         Edit
                     </button>
+                    <button v-if="project.status === 'draft'" @click="deleteProject" class="delete-button">
+                        Delete
+                    </button>
                 </div>
             </div>
             <p class="proposal-detail-description">{{ project.description }}</p>
@@ -73,6 +76,13 @@ function goToEdit() {
         router.push({ name: 'proposal-edit', params: { id: project.value._id } });
     }
 }
+
+async function deleteProject() {
+    if (project.value) {
+        await projectStore.deleteProject(project.value._id);
+        router.push({ name: 'proposals' });
+    }
+}
 </script>
 
 <style scoped>
@@ -113,6 +123,16 @@ function goToEdit() {
 .edit-button {
     margin-left: 16px;
     background-color: #6200ee;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 8px 16px;
+    cursor: pointer;
+}
+
+.delete-button {
+    margin-left: 16px;
+    background-color: #f44336;
     color: white;
     border: none;
     border-radius: 4px;
