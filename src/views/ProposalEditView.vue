@@ -1,78 +1,48 @@
 <script setup lang="ts">
-import { ref } from 'vue';
-import { createProject } from '@/services/api';
-import { useAuthStore } from '@/stores/auth';
+import { ref, onMounted } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import { useProjectStore } from '@/stores/project';
+import ProjectForm from '@/components/ProjectForm.vue';
 import type { Project } from '@/types';
-import { storeToRefs } from 'pinia';
-import { useRouter } from 'vue-router';
 
-const authStore = useAuthStore();
-const { user, token } = storeToRefs(authStore);
+const projectStore = useProjectStore();
 const router = useRouter();
+const route = useRoute();
 
-const projectName = ref('');
-const projectDescription = ref('');
-const submitting = ref(false);
-const error = ref<string | null>(null);
-const success = ref(false);
+const project = ref<Partial<Project>>({});
+const isNew = ref(false);
 
-async function submitProposal() {
-    if (!projectName.value || !projectDescription.value) {
-        error.value = 'Please fill out all fields.';
-        return;
-    }
-
-    submitting.value = true;
-    error.value = null;
-    success.value = false;
-
-    try {
-        if (!token.value || !user.value) {
-            throw new Error('You must be logged in to create a project.');
+onMounted(async () => {
+    const id = route.params.id as string;
+    if (id) {
+        await projectStore.fetchProject(id);
+        if (projectStore.currentProject) {
+            project.value = { ...projectStore.currentProject };
         }
-        const newProjectData = {
-            name: projectName.value,
-            description: projectDescription.value,
-            //owner: user.value,
-            status: "draft" as const,
-            members: [],
-            samples: [],
-        };
-        const newProject = await createProject(newProjectData, token.value);
-        success.value = true;
-        projectName.value = '';
-        projectDescription.value = '';
-        router.push({ name: 'proposal-detail', params: { id: newProject._id } });
-    } catch (e: any) {
-        error.value = e.message;
-    } finally {
-        submitting.value = false;
     }
+});
+
+async function save(projectData: Partial<Project>) {
+    await projectStore.updateProject(project.value._id!, projectData);
+    router.push({ name: 'proposal-detail', params: { id: project.value._id } });
+}
+
+async function submit(projectData: Partial<Project>) {
+    projectData.status = 'under review';
+    await projectStore.updateProject(project.value._id!, projectData);
+    router.push({ name: 'proposal-detail', params: { id: project.value._id } });
+}
+
+async function del(id: string) {
+    await projectStore.deleteProject(id);
+    router.push({ name: 'proposals' });
 }
 </script>
 
 <template>
-    <div class="proposal-container">
-        <div class="proposal-card">
-            <h1 class="proposal-title">Submit a New Project Proposal</h1>
-            <form @submit.prevent="submitProposal">
-                <div class="form-group">
-                    <label for="projectName">Project Name</label>
-                    <input id="projectName" v-model="projectName" type="text" />
-                </div>
-                <div class="form-group">
-                    <label for="projectDescription">Project Description</label>
-                    <textarea id="projectDescription" v-model="projectDescription"></textarea>
-                </div>
-                <div v-if="error" class="error-message">{{ error }}</div>
-                <div v-if="success" class="success-message">
-                    Project proposal submitted successfully!
-                </div>
-                <button class="submit-button" type="submit" :disabled="submitting">
-                    {{ submitting ? 'Submitting...' : 'Submit Proposal' }}
-                </button>
-            </form>
-        </div>
+    <div>
+        <h1>Edit Proposal</h1>
+        <ProjectForm :project="project" :is-new="false" @save="save" @submit="submit" @delete="del" />
     </div>
 </template>
 

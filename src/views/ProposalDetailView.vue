@@ -8,9 +8,14 @@
         <div class="proposal-detail-card">
             <div class="proposal-detail-header">
                 <h1 class="proposal-detail-title">{{ project.name }}</h1>
-                <span class="status-chip" :class="getStatusChipClass(project.status)">
-                    {{ project.status }}
-                </span>
+                <div>
+                    <span class="status-chip" :class="getStatusChipClass(project.status)">
+                        {{ project.status }}
+                    </span>
+                    <button v-if="project.status === 'draft'" @click="goToEdit" class="edit-button">
+                        Edit
+                    </button>
+                </div>
             </div>
             <p class="proposal-detail-description">{{ project.description }}</p>
         </div>
@@ -62,6 +67,12 @@ function goBack() {
 function getStatusChipClass(status: ProjectStatus) {
     return `status-chip--${status.replace(' ', '-')}`;
 }
+
+function goToEdit() {
+    if (project.value) {
+        router.push({ name: 'proposal-edit', params: { id: project.value._id } });
+    }
+}
 </script>
 
 <style scoped>
@@ -97,6 +108,16 @@ function getStatusChipClass(status: ProjectStatus) {
     justify-content: space-between;
     align-items: center;
     margin-bottom: 16px;
+}
+
+.edit-button {
+    margin-left: 16px;
+    background-color: #6200ee;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 8px 16px;
+    cursor: pointer;
 }
 
 .proposal-detail-title {

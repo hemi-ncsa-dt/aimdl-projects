@@ -60,3 +60,25 @@ export async function createProject(projectData: Omit<Project, '_id' | 'owner' |
     });
     return handleResponse<Project>(response);
 }
+
+export async function updateProject(id: string, projectData: Partial<Project>, token: string): Promise<Project> {
+    const response = await fetch(`${API_BASE_URL}/project/${id}`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+            'Girder-Token': token,
+        },
+        body: JSON.stringify(projectData),
+    });
+    return handleResponse<Project>(response);
+}
+
+export async function deleteProject(id: string, token: string): Promise<void> {
+    const response = await fetch(`${API_BASE_URL}/project/${id}`, {
+        method: 'DELETE',
+        headers: {
+            'Girder-Token': token,
+        },
+    });
+    await handleResponse<void>(response);
+}

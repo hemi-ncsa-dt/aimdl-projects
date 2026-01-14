@@ -13,8 +13,17 @@ onMounted(() => {
     projectStore.fetchProjects();
 });
 
-function goToCreateProposal() {
-    router.push({ name: 'create-proposal' });
+async function startNewProposal() {
+    await projectStore.createProject({
+        name: 'New Draft Proposal',
+        description: '',
+        members: [],
+        samples: [],
+        status: 'draft',
+    });
+    if (projectStore.currentProject) {
+        router.push({ name: 'proposal-detail', params: { id: projectStore.currentProject._id } });
+    }
 }
 
 function goToProposalDetail(projectId: string) {
@@ -30,8 +39,8 @@ function getStatusChipClass(status: ProjectStatus) {
     <div class="proposals-container">
         <div class="proposals-header">
             <h1 class="proposals-title">My Proposals</h1>
-            <button class="create-button" @click="goToCreateProposal">
-                New Proposal
+            <button class="create-button" @click="startNewProposal">
+                Start a New Proposal
             </button>
         </div>
 

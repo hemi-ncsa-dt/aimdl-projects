@@ -13,9 +13,9 @@ const router = createRouter({
       component: () => import('../views/ProposalsView.vue'),
     },
     {
-      path: '/proposal/new',
-      name: 'create-proposal',
-      component: () => import('../views/CreateProposalView.vue'),
+      path: '/proposal/:id/edit',
+      name: 'proposal-edit',
+      component: () => import('../views/ProposalEditView.vue'),
     },
     {
       path: '/proposal/:id',
