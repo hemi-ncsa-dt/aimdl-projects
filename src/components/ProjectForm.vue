@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useProjectStore } from '@/stores/project';
 import { useAuthStore } from '@/stores/auth';
 import { ProjectRole } from '@/types';
-import type { Project, ProjectMember } from '@/types';
-import { VForm, VTextField, VTextarea, VBtn, VSelect, VIcon } from 'vuetify/components';
+import type { Project, ProjectMember, AutocompleteSuggestion, Person } from '@/types';
+import { VForm, VTextField, VTextarea, VBtn, VSelect, VIcon, VAutocomplete } from 'vuetify/components';
+import { getOrcidSuggestions, searchUsers } from '@/services/api';
+import { debounce } from 'lodash';
 
 const projectStore = useProjectStore();
 const authStore = useAuthStore();
@@ -21,6 +23,9 @@ const project = ref<Partial<Project> & { members: ProjectMember[] }>({
 });
 
 const isNew = ref(true);
+const orcidSuggestions = ref<AutocompleteSuggestion[]>([]);
+const userSuggestions = ref<Person[]>([]);
+const suggestionWatcher = ref<(() => void) | null>(null);
 
 const orcidRule = [
     (v: string) => !!v || 'ORCID iD is required',
@@ -49,12 +54,68 @@ onMounted(async () => {
                     lastName: m.lastName,
                     email: m.email,
                     orcidId: m.orcidId || '',
-                    role: m.role
+                    role: m.role,
+                    girderId: m.girderId || null,
                 }))
             };
         }
     }
 });
+
+const fetchSuggestions = async (member: ProjectMember) => {
+    if (member.firstName && member.lastName && authStore.token) {
+        const query = `${member.firstName} ${member.lastName}`;
+        orcidSuggestions.value = await getOrcidSuggestions(query, authStore.token);
+    }
+};
+
+const onOrcidFocus = (member: ProjectMember) => {
+    fetchSuggestions(member);
+    if (suggestionWatcher.value) {
+        suggestionWatcher.value();
+    }
+    suggestionWatcher.value = watch(() => `${member.firstName} ${member.lastName}`, () => {
+        fetchSuggestions(member);
+    });
+};
+
+const onOrcidBlur = () => {
+    if (suggestionWatcher.value) {
+        suggestionWatcher.value();
+        suggestionWatcher.value = null;
+    }
+};
+
+const onOrcidSelect = (value: string, member: ProjectMember) => {
+    if (value) {
+        const match = value.match(/\(([^)]+)\)/);
+        if (match && match[1]) {
+            const orcid = match[1];
+            if (/^\d{4}-\d{4}-\d{4}-\d{3}[0-9X]{1}$/.test(orcid)) {
+                member.orcidId = orcid;
+            }
+        }
+    }
+};
+
+const debouncedSearch = debounce(async (query: string) => {
+    if (query && authStore.token) {
+        userSuggestions.value = await searchUsers(query, authStore.token);
+    }
+}, 300);
+
+const onUserSearch = (query: string) => {
+    debouncedSearch(query);
+};
+
+const onUserSelect = (user: Person, member: ProjectMember) => {
+    if (user) {
+        member.firstName = user.firstName;
+        member.lastName = user.lastName;
+        member.email = user.email;
+        member.girderId = user._id;
+    }
+};
 
 const addMember = () => {
     project.value.members.push({
@@ -63,6 +124,7 @@ const addMember = () => {
         email: '',
         orcidId: '',
         role: ProjectRole.USER,
+        girderId: null,
     });
 };
 
@@ -102,10 +164,26 @@ const submitForReview = async () => {
 
         <h2>Members</h2>
         <div v-for="(member, index) in project.members" :key="index" class="d-flex align-center my-2">
-            <v-text-field v-model="member.firstName" label="First Name" class="mr-2"></v-text-field>
-            <v-text-field v-model="member.lastName" label="Last Name" class="mr-2"></v-text-field>
+            <v-autocomplete v-model="member.firstName" :items="userSuggestions" item-title="firstName" item-value="_id"
+                label="First Name" class="mr-2" @update:search="onUserSearch"
+                @update:model-value="(userId: string) => onUserSelect(userSuggestions.find(u => u._id === userId)!, member)">
+                <template v-slot:item="{ props, item }">
+                    <v-list-item v-bind="props" :title="`${item.firstName} ${item.lastName}`"
+                        :subtitle="item.email"></v-list-item>
+                </template>
+            </v-autocomplete>
+            <v-autocomplete v-model="member.lastName" :items="userSuggestions" item-title="lastName" item-value="_id"
+                label="Last Name" class="mr-2" @update:search="onUserSearch"
+                @update:model-value="(userId: string) => onUserSelect(userSuggestions.find(u => u._id === userId)!, member)">
+                <template v-slot:item="{ props, item }">
+                    <v-list-item v-bind="props" :title="`${item.firstName} ${item.lastName}`"
+                        :subtitle="item.email"></v-list-item>
+                </template>
+            </v-autocomplete>
             <v-text-field v-model="member.email" label="Email" :rules="emailRule" class="mr-2"></v-text-field>
-            <v-text-field v-model="member.orcidId" label="ORCID iD" :rules="orcidRule" class="mr-2"></v-text-field>
+            <v-autocomplete v-model="member.orcidId" :items="orcidSuggestions" item-title="text" item-value="text"
+                label="ORCID iD" :rules="orcidRule" class="mr-2" @focus="onOrcidFocus(member)" @blur="onOrcidBlur"
+                @update:modelValue="(value: string) => onOrcidSelect(value, member)"></v-autocomplete>
             <v-select v-model="member.role" :items="roleOptions" label="Role" class="mr-2"></v-select>
             <v-btn icon @click="removeMember(index)">
                 <v-icon>mdi-delete</v-icon>

@@ -1,4 +1,4 @@
-import type { Project, Person } from '@/types';
+import type { Project, Person, AutocompleteSuggestion } from '@/types';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
@@ -82,4 +82,22 @@ export async function deleteProject(id: string, token: string): Promise<void> {
         },
     });
     await handleResponse<void>(response);
+}
+
+export async function getOrcidSuggestions(query: string, token: string): Promise<AutocompleteSuggestion[]> {
+    const response = await fetch(`${API_BASE_URL}/deposition/autocomplete?query=${encodeURIComponent(query)}`, {
+        headers: {
+            'Girder-Token': token,
+        },
+    });
+    return (await handleResponse<AutocompleteSuggestion[]>(response)) || [];
+}
+
+export async function searchUsers(query: string, token: string): Promise<Person[]> {
+    const response = await fetch(`${API_BASE_URL}/user?text=${encodeURIComponent(query)}`, {
+        headers: {
+            'Girder-Token': token,
+        },
+    });
+    return (await handleResponse<Person[]>(response)) || [];
 }

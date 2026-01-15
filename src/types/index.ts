@@ -97,6 +97,12 @@ export interface ProjectMember {
     orcidId: string;
     role: ProjectRole;
     email: string;
+    girderId: string | null;
+}
+
+export interface AutocompleteSuggestion {
+    text: string;
+    value: number;
 }
 
 export interface File {
