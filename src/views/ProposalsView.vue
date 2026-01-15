@@ -2,22 +2,36 @@
 import { onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useProjectStore } from '@/stores/project';
+import { useAuthStore } from '@/stores/auth';
 import { storeToRefs } from 'pinia';
-import type { Project, ProjectStatus } from '@/types';
+import type { Project, ProjectStatus, ProjectMember } from '@/types';
+import { ProjectRole } from '@/types';
 
 const router = useRouter();
 const projectStore = useProjectStore();
+const authStore = useAuthStore();
 const { projects, loading, error } = storeToRefs(projectStore);
 
 onMounted(() => {
     projectStore.fetchProjects();
+    authStore.fetchUser();
 });
 
 async function startNewProposal() {
+    const members: ProjectMember[] = [];
+    if (authStore.user) {
+        members.push({
+            firstName: authStore.user.firstName,
+            lastName: authStore.user.lastName,
+            email: authStore.user.email,
+            orcidId: '',
+            role: ProjectRole.PI,
+        });
+    }
     await projectStore.createProject({
         name: 'New Draft Proposal',
         description: '',
-        members: [],
+        members,
         samples: [],
         status: 'draft',
     });

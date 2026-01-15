@@ -5,7 +5,7 @@ export interface Project {
     name: string;
     description: string;
     owner: Person;
-    members: Person[];
+    members: ProjectMember[];
     samples: Sample[];
     status: ProjectStatus;
     created: Date;
@@ -83,6 +83,20 @@ export interface Item {
     name: string;
     size: number;
     updated: Date;
+}
+
+export enum ProjectRole {
+    PI = 'PI',
+    MANAGER = 'manager',
+    USER = 'user',
+}
+
+export interface ProjectMember {
+    firstName: string;
+    lastName: string;
+    orcidId: string;
+    role: ProjectRole;
+    email: string;
 }
 
 export interface File {
