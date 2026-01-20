@@ -145,6 +145,7 @@ const save = async () => {
             members: members || [],
             samples: samples || [],
             files: files || [],
+            submissionFolderId: '', // Will be set by backend
         });
     } else {
         const { name, description, status, members, samples, files } = project.value;
@@ -203,7 +204,7 @@ const cancel = () => {
         </div>
         <v-btn @click="addMember" class="my-2">Add Member</v-btn>
 
-        <FileUploader v-if="project.submissionFolderId" v-model="project.files"
+        <FileUploader v-if="project.submissionFolderId" v-model="project.files!"
             :folder-id="project.submissionFolderId" />
         <div v-else class="my-4 text-caption text-grey">
             File uploads will be available after saving the project.
