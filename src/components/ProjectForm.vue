@@ -4,7 +4,8 @@ import { useRoute, useRouter } from 'vue-router';
 import { useProjectStore } from '@/stores/project';
 import { useAuthStore } from '@/stores/auth';
 import { ProjectRole } from '@/types';
-import type { Project, ProjectMember, AutocompleteSuggestion, Person } from '@/types';
+import type { Project, ProjectMember, AutocompleteSuggestion, Person, ProjectFile } from '@/types';
+import FileUploader from './FileUploader.vue';
 import { VForm, VTextField, VTextarea, VBtn, VSelect, VIcon, VAutocomplete } from 'vuetify/components';
 import { getOrcidSuggestions, searchUsers } from '@/services/api';
 import { debounce } from 'lodash';
@@ -20,6 +21,7 @@ const project = ref<Partial<Project> & { members: ProjectMember[] }>({
     status: 'draft',
     members: [],
     samples: [],
+    files: [],
 });
 
 const isNew = ref(true);
@@ -55,8 +57,9 @@ onMounted(async () => {
                     email: m.email,
                     orcidId: m.orcidId || '',
                     role: m.role,
-                    girderId: m.girderId || null,
-                }))
+                    userId: m.userId || null,
+                })),
+                files: projectStore.currentProject.files || [],
             };
         }
     }
@@ -113,7 +116,7 @@ const onUserSelect = (user: Person, member: ProjectMember) => {
         member.firstName = user.firstName;
         member.lastName = user.lastName;
         member.email = user.email;
-        member.girderId = user._id;
+        member.userId = user._id;
     }
 };
 
@@ -124,7 +127,7 @@ const addMember = () => {
         email: '',
         orcidId: '',
         role: ProjectRole.USER,
-        girderId: null,
+        userId: null,
     });
 };
 
@@ -134,26 +137,35 @@ const removeMember = (index: number) => {
 
 const save = async () => {
     if (isNew.value) {
-        const { name, description, status, members, samples } = project.value;
+        const { name, description, status, members, samples, files } = project.value;
         await projectStore.createProject({
             name: name || '',
             description: description || '',
             status: status || 'draft',
             members: members || [],
             samples: samples || [],
+            files: files || [],
         });
     } else {
-        const { name, description, status, members, samples } = project.value;
-        await projectStore.updateProject(project.value._id!, { name, description, status, members, samples });
+        const { name, description, status, members, samples, files } = project.value;
+        await projectStore.updateProject(project.value._id!, { name, description, status, members, samples, files });
     }
-    router.push('/proposals');
+    router.push(`/proposal/${projectStore.currentProject?._id}`);
 };
 
 const submitForReview = async () => {
     project.value.status = 'under review';
-    const { name, description, status, members, samples } = project.value;
-    await projectStore.updateProject(project.value._id!, { name, description, status, members, samples });
+    const { name, description, status, members, samples, files } = project.value;
+    await projectStore.updateProject(project.value._id!, { name, description, status, members, samples, files });
     router.push('/proposals');
+};
+
+const cancel = () => {
+    if (project.value._id) {
+        router.push(`/proposal/${project.value._id}`);
+    } else {
+        router.push('/proposals');
+    }
 };
 </script>
 
@@ -191,9 +203,16 @@ const submitForReview = async () => {
         </div>
         <v-btn @click="addMember" class="my-2">Add Member</v-btn>
 
+        <FileUploader v-if="project.submissionFolderId" v-model="project.files"
+            :folder-id="project.submissionFolderId" />
+        <div v-else class="my-4 text-caption text-grey">
+            File uploads will be available after saving the project.
+        </div>
+
         <div class="mt-4">
             <v-btn @click="save" color="primary">Save Draft</v-btn>
             <v-btn @click="submitForReview" color="secondary" class="ml-2">Submit for Review</v-btn>
+            <v-btn @click="cancel" class="ml-2">Cancel</v-btn>
         </div>
     </v-form>
 </template>

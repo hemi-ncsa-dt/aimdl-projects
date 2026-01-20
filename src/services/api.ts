@@ -1,4 +1,4 @@
-import type { Project, Person, AutocompleteSuggestion } from '@/types';
+import type { Project, Person, AutocompleteSuggestion, UploadResponse, FileUploadResult } from '@/types';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
@@ -100,4 +100,89 @@ export async function searchUsers(query: string, token: string): Promise<Person[
         },
     });
     return (await handleResponse<Person[]>(response)) || [];
+}
+
+// File upload API
+export async function initiateUpload(
+    parentId: string,
+    parentType: 'folder' | 'item',
+    name: string,
+    size: number,
+    token: string,
+    mimeType?: string
+): Promise<UploadResponse> {
+    const params = new URLSearchParams({
+        parentId,
+        parentType,
+        name,
+        size: size.toString(),
+    });
+
+    if (mimeType) {
+        params.append('mimeType', mimeType);
+    }
+
+    const response = await fetch(`${API_BASE_URL}/file?${params}`, {
+        method: 'POST',
+        headers: {
+            'Girder-Token': token,
+        },
+    });
+    return handleResponse<UploadResponse>(response);
+}
+
+export async function uploadChunk(
+    uploadId: string,
+    offset: number,
+    chunk: Blob,
+    token: string
+): Promise<UploadResponse | FileUploadResult> {
+    const params = new URLSearchParams({
+        uploadId,
+        offset: offset.toString(),
+    });
+
+    const response = await fetch(`${API_BASE_URL}/file/chunk?${params}`, {
+        method: 'POST',
+        headers: {
+            'Girder-Token': token,
+            'Content-Type': 'application/octet-stream',
+        },
+        body: chunk,
+    });
+    return handleResponse<UploadResponse | FileUploadResult>(response);
+}
+
+export async function getUploadOffset(uploadId: string, token: string): Promise<{ offset: number }> {
+    const params = new URLSearchParams({
+        uploadId,
+    });
+
+    const response = await fetch(`${API_BASE_URL}/file/offset?${params}`, {
+        method: 'GET',
+        headers: {
+            'Girder-Token': token,
+        },
+    });
+    return handleResponse<{ offset: number }>(response);
+}
+
+export async function getFileDetails(fileId: string, token: string): Promise<FileUploadResult> {
+    const response = await fetch(`${API_BASE_URL}/file/${fileId}`, {
+        method: 'GET',
+        headers: {
+            'Girder-Token': token,
+        },
+    });
+    return handleResponse<FileUploadResult>(response);
+}
+
+export async function deleteItem(itemId: string, token: string): Promise<void> {
+    const response = await fetch(`${API_BASE_URL}/item/${itemId}`, {
+        method: 'DELETE',
+        headers: {
+            'Girder-Token': token,
+        },
+    });
+    await handleResponse<void>(response);
 }

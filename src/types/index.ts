@@ -1,5 +1,17 @@
 export type ProjectStatus = 'draft' | 'under review' | 'accepted' | 'rejected';
 
+export enum FileType {
+    OTHER = 'other',
+}
+
+export interface ProjectFile {
+    type: FileType;
+    fileId: string;
+    itemId?: string;
+    name?: string;
+    size?: number;
+}
+
 export interface Project {
     _id: string; // DOI
     name: string;
@@ -10,6 +22,8 @@ export interface Project {
     status: ProjectStatus;
     created: Date;
     updated: Date;
+    submissionFolderId: string;
+    files?: ProjectFile[];
 }
 
 export interface Sample {
@@ -97,7 +111,7 @@ export interface ProjectMember {
     orcidId: string;
     role: ProjectRole;
     email: string;
-    girderId: string | null;
+    userId: string | null;
 }
 
 export interface AutocompleteSuggestion {
@@ -115,4 +129,23 @@ export interface File {
     created: Date;
     creatorId: string;
     public: boolean;
+}
+
+export interface UploadResponse {
+    _id: string;
+    _modelType: 'upload';
+    created: Date;
+    itemId?: string;
+    received: number;
+    size: number;
+    userId: string;
+}
+
+export interface FileUploadResult {
+    _id: string;
+    _modelType: 'file';
+    itemId: string;
+    name: string;
+    size: number;
+    mimeType: string;
 }
