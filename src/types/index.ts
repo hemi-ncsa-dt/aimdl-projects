@@ -1,6 +1,8 @@
 export type ProjectStatus = 'draft' | 'under review' | 'accepted' | 'rejected';
 
 export enum FileType {
+    PROPOSAL = 'proposal',
+    CV = 'cv',
     OTHER = 'other',
 }
 
@@ -24,6 +26,7 @@ export interface Project {
     updated: Date;
     submissionFolderId: string;
     files?: ProjectFile[];
+    projectId: string;
 }
 
 export interface Sample {

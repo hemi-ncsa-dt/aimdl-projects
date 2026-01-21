@@ -6,6 +6,7 @@ import { useAuthStore } from '@/stores/auth';
 import { ProjectRole } from '@/types';
 import type { Project, ProjectMember, AutocompleteSuggestion, Person, ProjectFile } from '@/types';
 import FileUploader from './FileUploader.vue';
+import MarkdownEditor from './MarkdownEditor.vue';
 import { VForm, VTextField, VTextarea, VBtn, VSelect, VIcon, VAutocomplete, VCombobox } from 'vuetify/components';
 import { getOrcidSuggestions, searchUsers } from '@/services/api';
 import { debounce } from 'lodash';
@@ -199,7 +200,7 @@ const cancel = () => {
 <template>
     <v-form>
         <v-text-field v-model="project.name" label="Project Name"></v-text-field>
-        <v-textarea v-model="project.description" label="Public Overview"></v-textarea>
+        <MarkdownEditor v-model="project.description" label="Public Overview" class="my-4" />
 
         <h2>Members</h2>
         <div v-for="(member, index) in project.members" :key="index" class="d-flex align-center my-2">

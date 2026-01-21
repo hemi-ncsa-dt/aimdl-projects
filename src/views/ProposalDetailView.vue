@@ -20,7 +20,7 @@
                     </button>
                 </div>
             </div>
-            <p class="proposal-detail-description">{{ project.description }}</p>
+            <p class="proposal-detail-description" v-html="renderMarkdown(project.description)"></p>
         </div>
 
         <!-- Members Section -->
@@ -138,6 +138,25 @@ async function deleteProject() {
 
 function getInitials(firstName: string, lastName: string): string {
     return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
+}
+
+// Simple markdown to HTML conversion
+function renderMarkdown(markdown: string): string {
+    if (!markdown) return '';
+
+    let html = markdown
+        // Bold: **text** or __text__
+        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+        .replace(/__(.+?)__/g, '<strong>$1</strong>')
+        // Italic: *text* or _text_
+        .replace(/\*(.+?)\*/g, '<em>$1</em>')
+        .replace(/_(.+?)_/g, '<em>$1</em>')
+        // Line breaks: double line break for paragraphs
+        .replace(/\n\n/g, '</p><p>')
+        // Single line breaks
+        .replace(/\n/g, '<br>');
+
+    return `<p>${html}</p>`;
 }
 
 function formatFileSize(size: number | undefined): string {
@@ -276,14 +295,14 @@ function getDownloadUrl(fileId: string): string {
 .members-container {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 8px;
 }
 
 .member-card {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 16px;
+    padding: 10px 12px;
     border: 1px solid #e0e0e0;
     border-radius: 4px;
     transition: box-shadow 0.2s;
@@ -296,12 +315,12 @@ function getDownloadUrl(fileId: string): string {
 .member-info {
     display: flex;
     align-items: center;
-    gap: 16px;
+    gap: 12px;
 }
 
 .member-avatar {
-    width: 48px;
-    height: 48px;
+    width: 36px;
+    height: 36px;
     border-radius: 50%;
     background-color: #6200ee;
     color: white;
@@ -309,28 +328,28 @@ function getDownloadUrl(fileId: string): string {
     align-items: center;
     justify-content: center;
     font-weight: 500;
-    font-size: 18px;
+    font-size: 14px;
 }
 
 .member-details {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 2px;
 }
 
 .member-name {
-    font-size: 16px;
+    font-size: 14px;
     font-weight: 500;
     color: rgba(0, 0, 0, 0.87);
 }
 
 .member-email {
-    font-size: 14px;
+    font-size: 12px;
     color: rgba(0, 0, 0, 0.6);
 }
 
 .member-orcid {
-    font-size: 12px;
+    font-size: 11px;
     color: rgba(0, 0, 0, 0.6);
     font-family: monospace;
 }
@@ -341,10 +360,10 @@ function getDownloadUrl(fileId: string): string {
 
 .role-badge {
     display: inline-block;
-    padding: 4px 12px;
-    font-size: 12px;
+    padding: 3px 10px;
+    font-size: 11px;
     font-weight: 500;
-    border-radius: 12px;
+    border-radius: 10px;
     text-transform: uppercase;
 }
 

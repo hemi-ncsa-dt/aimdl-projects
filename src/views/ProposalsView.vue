@@ -49,6 +49,24 @@ function goToProposalDetail(projectId: string) {
 function getStatusChipClass(status: ProjectStatus) {
     return `status-chip--${status.replace(' ', '-')}`;
 }
+
+// Simple markdown to HTML conversion (strip formatting for list view)
+function stripMarkdown(markdown: string): string {
+    if (!markdown) return '';
+
+    return markdown
+        // Remove bold
+        .replace(/\*\*(.+?)\*\*/g, '$1')
+        .replace(/__(.+?)__/g, '$1')
+        // Remove italic
+        .replace(/\*(.+?)\*/g, '$1')
+        .replace(/_(.+?)_/g, '$1')
+        // Replace line breaks with spaces
+        .replace(/\n/g, ' ')
+        // Collapse multiple spaces
+        .replace(/\s+/g, ' ')
+        .trim();
+}
 </script>
 
 <template>
@@ -72,7 +90,7 @@ function getStatusChipClass(status: ProjectStatus) {
                     @click="goToProposalDetail(project._id)">
                     <div class="proposal-item__info">
                         <h2 class="proposal-item__name">{{ project.projectId }}: {{ project.name }}</h2>
-                        <p class="proposal-item__description">{{ project.description }}</p>
+                        <p class="proposal-item__description">{{ stripMarkdown(project.description) }}</p>
                     </div>
                     <div class="proposal-item__status">
                         <span class="status-chip" :class="getStatusChipClass(project.status)">
@@ -150,6 +168,12 @@ function getStatusChipClass(status: ProjectStatus) {
     border-bottom: none;
 }
 
+.proposal-item__info {
+    flex: 1;
+    min-width: 0;
+    margin-right: 16px;
+}
+
 .proposal-item__name {
     font-size: 18px;
     font-weight: 500;
@@ -160,6 +184,9 @@ function getStatusChipClass(status: ProjectStatus) {
     font-size: 14px;
     color: rgba(0, 0, 0, 0.6);
     margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .status-chip {
