@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue';
+import { ref, onMounted, watch, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useProjectStore } from '@/stores/project';
 import { useAuthStore } from '@/stores/auth';
 import { ProjectRole } from '@/types';
 import type { Project, ProjectMember, AutocompleteSuggestion, Person, ProjectFile } from '@/types';
 import FileUploader from './FileUploader.vue';
-import { VForm, VTextField, VTextarea, VBtn, VSelect, VIcon, VAutocomplete } from 'vuetify/components';
+import { VForm, VTextField, VTextarea, VBtn, VSelect, VIcon, VAutocomplete, VCombobox } from 'vuetify/components';
 import { getOrcidSuggestions, searchUsers } from '@/services/api';
 import { debounce } from 'lodash';
 
@@ -101,9 +101,18 @@ const onOrcidSelect = (value: string, member: ProjectMember) => {
     }
 };
 
+const firstNameSuggestions = computed(() =>
+    userSuggestions.value.map(u => u.firstName)
+);
+
+const lastNameSuggestions = computed(() =>
+    userSuggestions.value.map(u => u.lastName)
+);
+
 const debouncedSearch = debounce(async (query: string) => {
     if (query && authStore.token) {
         userSuggestions.value = await searchUsers(query, authStore.token);
+        console.log('User suggestions:', userSuggestions.value);
     }
 }, 300);
 
@@ -117,6 +126,24 @@ const onUserSelect = (user: Person, member: ProjectMember) => {
         member.lastName = user.lastName;
         member.email = user.email;
         member.userId = user._id;
+    }
+};
+
+const onFirstNameChange = (value: string, member: ProjectMember) => {
+    member.firstName = value;
+    // Check if this matches a user from suggestions
+    const matchedUser = userSuggestions.value.find(u => u.firstName === value);
+    if (matchedUser) {
+        onUserSelect(matchedUser, member);
+    }
+};
+
+const onLastNameChange = (value: string, member: ProjectMember) => {
+    member.lastName = value;
+    // Check if this matches a user from suggestions
+    const matchedUser = userSuggestions.value.find(u => u.lastName === value);
+    if (matchedUser) {
+        onUserSelect(matchedUser, member);
     }
 };
 
@@ -176,22 +203,12 @@ const cancel = () => {
 
         <h2>Members</h2>
         <div v-for="(member, index) in project.members" :key="index" class="d-flex align-center my-2">
-            <v-autocomplete v-model="member.firstName" :items="userSuggestions" item-title="firstName" item-value="_id"
-                label="First Name" class="mr-2" @update:search="onUserSearch"
-                @update:model-value="(userId: string) => onUserSelect(userSuggestions.find(u => u._id === userId)!, member)">
-                <template v-slot:item="{ props, item }">
-                    <v-list-item v-bind="props" :title="`${item.firstName} ${item.lastName}`"
-                        :subtitle="item.email"></v-list-item>
-                </template>
-            </v-autocomplete>
-            <v-autocomplete v-model="member.lastName" :items="userSuggestions" item-title="lastName" item-value="_id"
-                label="Last Name" class="mr-2" @update:search="onUserSearch"
-                @update:model-value="(userId: string) => onUserSelect(userSuggestions.find(u => u._id === userId)!, member)">
-                <template v-slot:item="{ props, item }">
-                    <v-list-item v-bind="props" :title="`${item.firstName} ${item.lastName}`"
-                        :subtitle="item.email"></v-list-item>
-                </template>
-            </v-autocomplete>
+            <v-combobox v-model="member.firstName" :items="firstNameSuggestions" label="First Name" class="mr-2"
+                @update:search="onUserSearch" @update:model-value="(value: string) => onFirstNameChange(value, member)">
+            </v-combobox>
+            <v-combobox v-model="member.lastName" :items="lastNameSuggestions" label="Last Name" class="mr-2"
+                @update:search="onUserSearch" @update:model-value="(value: string) => onLastNameChange(value, member)">
+            </v-combobox>
             <v-text-field v-model="member.email" label="Email" :rules="emailRule" class="mr-2"></v-text-field>
             <v-autocomplete v-model="member.orcidId" :items="orcidSuggestions" item-title="text" item-value="text"
                 label="ORCID iD" :rules="orcidRule" class="mr-2" @focus="onOrcidFocus(member)" @blur="onOrcidBlur"
