@@ -1,6 +1,7 @@
 <template>
     <header class="app-bar">
         <div class="app-bar__title">
+            <img src="/CAIMEE-Icon.png" alt="CAIMEE Icon" class="app-bar__icon" />
             AIMD-L Project Proposals
         </div>
         <div class="app-bar__user" v-if="user">
@@ -37,8 +38,16 @@ const logout = () => {
 }
 
 .app-bar__title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
     font-size: 20px;
     font-weight: 500;
+}
+
+.app-bar__icon {
+    height: 40px;
+    width: auto;
 }
 
 .app-bar__user {
