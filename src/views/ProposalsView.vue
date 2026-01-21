@@ -26,6 +26,7 @@ async function startNewProposal() {
             email: authStore.user.email,
             orcidId: '',
             role: ProjectRole.PI,
+            userId: authStore.user._id,
         });
     }
     await projectStore.createProject({
@@ -34,6 +35,7 @@ async function startNewProposal() {
         members,
         samples: [],
         status: 'draft',
+        files: [],
     });
     if (projectStore.currentProject) {
         router.push({ name: 'proposal-detail', params: { id: projectStore.currentProject._id } });
@@ -69,7 +71,7 @@ function getStatusChipClass(status: ProjectStatus) {
                 <div v-for="project in projects" :key="project._id" class="proposal-item"
                     @click="goToProposalDetail(project._id)">
                     <div class="proposal-item__info">
-                        <h2 class="proposal-item__name">{{ project.name }}</h2>
+                        <h2 class="proposal-item__name">{{ project.projectId }}: {{ project.name }}</h2>
                         <p class="proposal-item__description">{{ project.description }}</p>
                     </div>
                     <div class="proposal-item__status">

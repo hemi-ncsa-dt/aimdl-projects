@@ -193,7 +193,7 @@ const isUploading = computed(() => uploadingFiles.value.size > 0);
 
 <template>
     <div class="file-uploader">
-        <h3>File Uploads</h3>
+        <h3>Documents</h3>
 
         <!-- Display uploaded files -->
         <div v-if="uploadedFiles.length > 0" class="uploaded-files mb-4">

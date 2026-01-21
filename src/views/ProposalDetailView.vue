@@ -7,7 +7,7 @@
     <div v-if="project" class="proposal-detail-container">
         <div class="proposal-detail-card">
             <div class="proposal-detail-header">
-                <h1 class="proposal-detail-title">{{ project.name }}</h1>
+                <h1 class="proposal-detail-title">{{ project.projectId }}: {{ project.name }}</h1>
                 <div>
                     <span class="status-chip" :class="getStatusChipClass(project.status)">
                         {{ project.status }}
@@ -21,6 +21,56 @@
                 </div>
             </div>
             <p class="proposal-detail-description">{{ project.description }}</p>
+        </div>
+
+        <!-- Members Section -->
+        <div class="proposal-detail-card">
+            <h2 class="section-title">Team Members</h2>
+            <div v-if="project.members && project.members.length > 0" class="members-container">
+                <div v-for="member in project.members" :key="member.orcidId" class="member-card">
+                    <div class="member-info">
+                        <div class="member-avatar">
+                            {{ getInitials(member.firstName, member.lastName) }}
+                        </div>
+                        <div class="member-details">
+                            <div class="member-name">{{ member.firstName }} {{ member.lastName }}</div>
+                            <div class="member-email">{{ member.email }}</div>
+                            <div class="member-orcid">ORCID: {{ member.orcidId }}</div>
+                        </div>
+                    </div>
+                    <div class="member-role">
+                        <span class="role-badge" :class="`role-badge--${member.role.toLowerCase()}`">
+                            {{ member.role }}
+                        </span>
+                    </div>
+                </div>
+            </div>
+            <div v-else class="empty-state">No team members added yet.</div>
+        </div>
+
+        <!-- Files Section -->
+        <div class="proposal-detail-card">
+            <h2 class="section-title">Project Files</h2>
+            <div v-if="project.files && project.files.length > 0" class="files-container">
+                <div class="files-grid">
+                    <div class="files-grid-header">
+                        <span>Name</span>
+                        <span>Type</span>
+                        <span>Size</span>
+                        <span>File ID</span>
+                    </div>
+                    <div v-for="file in project.files" :key="file.fileId" class="file-row">
+                        <div class="file-name">
+                            <span class="file-icon">📄</span>
+                            {{ file.name || 'Unnamed file' }}
+                        </div>
+                        <div class="file-type">{{ file.type }}</div>
+                        <div class="file-size">{{ formatFileSize(file.size) }}</div>
+                        <div class="file-id">{{ file.fileId }}</div>
+                    </div>
+                </div>
+            </div>
+            <div v-else class="empty-state">No files uploaded yet.</div>
         </div>
     </div>
     <div v-else-if="loading" class="loading-indicator">Loading...</div>
@@ -82,6 +132,24 @@ async function deleteProject() {
         await projectStore.deleteProject(project.value._id);
         router.push({ name: 'proposals' });
     }
+}
+
+function getInitials(firstName: string, lastName: string): string {
+    return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
+}
+
+function formatFileSize(size: number | undefined): string {
+    if (!size) return 'N/A';
+    const units = ['B', 'KB', 'MB', 'GB'];
+    let unitIndex = 0;
+    let fileSize = size;
+
+    while (fileSize >= 1024 && unitIndex < units.length - 1) {
+        fileSize /= 1024;
+        unitIndex++;
+    }
+
+    return `${fileSize.toFixed(2)} ${units[unitIndex]}`;
 }
 </script>
 
@@ -189,5 +257,182 @@ async function deleteProject() {
 
 .error-message {
     color: #b00020;
+}
+
+/* Members Section */
+.section-title {
+    font-size: 20px;
+    font-weight: 500;
+    margin: 0 0 16px 0;
+    color: rgba(0, 0, 0, 0.87);
+}
+
+.members-container {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.member-card {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    transition: box-shadow 0.2s;
+}
+
+.member-card:hover {
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.member-info {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.member-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background-color: #6200ee;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 500;
+    font-size: 18px;
+}
+
+.member-details {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.member-name {
+    font-size: 16px;
+    font-weight: 500;
+    color: rgba(0, 0, 0, 0.87);
+}
+
+.member-email {
+    font-size: 14px;
+    color: rgba(0, 0, 0, 0.6);
+}
+
+.member-orcid {
+    font-size: 12px;
+    color: rgba(0, 0, 0, 0.6);
+    font-family: monospace;
+}
+
+.member-role {
+    margin-left: auto;
+}
+
+.role-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    font-size: 12px;
+    font-weight: 500;
+    border-radius: 12px;
+    text-transform: uppercase;
+}
+
+.role-badge--pi {
+    background-color: #6200ee;
+    color: white;
+}
+
+.role-badge--manager {
+    background-color: #03dac6;
+    color: rgba(0, 0, 0, 0.87);
+}
+
+.role-badge--user {
+    background-color: #e0e0e0;
+    color: rgba(0, 0, 0, 0.87);
+}
+
+/* Files Section */
+.files-container {
+    width: 100%;
+}
+
+.files-grid {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+}
+
+.files-grid-header {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1.5fr;
+    gap: 16px;
+    padding: 12px 16px;
+    background-color: #f5f5f5;
+    border-radius: 4px 4px 0 0;
+    font-weight: 500;
+    font-size: 14px;
+    color: rgba(0, 0, 0, 0.87);
+}
+
+.file-row {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1.5fr;
+    gap: 16px;
+    padding: 12px 16px;
+    border-bottom: 1px solid #e0e0e0;
+    align-items: center;
+    transition: background-color 0.2s;
+}
+
+.file-row:hover {
+    background-color: #f5f5f5;
+}
+
+.file-row:last-child {
+    border-bottom: none;
+}
+
+.file-name {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    color: rgba(0, 0, 0, 0.87);
+}
+
+.file-icon {
+    font-size: 20px;
+}
+
+.file-type {
+    font-size: 12px;
+    color: rgba(0, 0, 0, 0.6);
+    text-transform: uppercase;
+}
+
+.file-size {
+    font-size: 14px;
+    color: rgba(0, 0, 0, 0.6);
+}
+
+.file-id {
+    font-size: 12px;
+    color: rgba(0, 0, 0, 0.6);
+    font-family: monospace;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.empty-state {
+    padding: 32px;
+    text-align: center;
+    color: rgba(0, 0, 0, 0.6);
+    font-size: 14px;
 }
 </style>

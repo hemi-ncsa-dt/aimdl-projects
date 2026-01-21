@@ -145,7 +145,6 @@ const save = async () => {
             members: members || [],
             samples: samples || [],
             files: files || [],
-            submissionFolderId: '', // Will be set by backend
         });
     } else {
         const { name, description, status, members, samples, files } = project.value;
@@ -173,7 +172,7 @@ const cancel = () => {
 <template>
     <v-form>
         <v-text-field v-model="project.name" label="Project Name"></v-text-field>
-        <v-textarea v-model="project.description" label="Project Description"></v-textarea>
+        <v-textarea v-model="project.description" label="Public Overview"></v-textarea>
 
         <h2>Members</h2>
         <div v-for="(member, index) in project.members" :key="index" class="d-flex align-center my-2">

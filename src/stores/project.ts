@@ -46,7 +46,7 @@ export const useProjectStore = defineStore('project', () => {
         }
     }
 
-    async function createProject(projectData: Omit<Project, '_id' | 'owner' | 'created' | 'updated'>) {
+    async function createProject(projectData: Omit<Project, '_id' | 'owner' | 'created' | 'updated' | 'submissionFolderId' | 'projectId'>) {
         if (!authStore.token) return;
         try {
             const newProject = await api.createProject(projectData, authStore.token);
@@ -57,7 +57,7 @@ export const useProjectStore = defineStore('project', () => {
         }
     }
 
-    async function updateProject(id: string, projectData: Partial<Project>) {
+    async function updateProject(id: string, projectData: Partial<Omit<Project, 'projectId' | 'submissionFolderId'>>) {
         if (!authStore.token) return;
         try {
             const updatedProject = await api.updateProject(id, projectData, authStore.token);
