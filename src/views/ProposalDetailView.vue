@@ -57,16 +57,17 @@
                         <span>Name</span>
                         <span>Type</span>
                         <span>Size</span>
-                        <span>File ID</span>
                     </div>
                     <div v-for="file in project.files" :key="file.fileId" class="file-row">
                         <div class="file-name">
-                            <span class="file-icon">📄</span>
+                            <v-icon class="file-icon">mdi-file-document</v-icon>
                             {{ file.name || 'Unnamed file' }}
                         </div>
                         <div class="file-type">{{ file.type }}</div>
                         <div class="file-size">{{ formatFileSize(file.size) }}</div>
-                        <div class="file-id">{{ file.fileId }}</div>
+                        <a :href="getDownloadUrl(file.fileId)" class="download-link" title="Download file">
+                            <v-icon>mdi-download</v-icon>
+                        </a>
                     </div>
                 </div>
             </div>
@@ -85,6 +86,7 @@ import { storeToRefs } from 'pinia';
 import type { Project, ProjectStatus } from '@/types';
 import { getProject } from '@/services/api';
 import { useAuthStore } from '@/stores/auth';
+import { VIcon } from 'vuetify/components';
 
 const route = useRoute();
 const router = useRouter();
@@ -150,6 +152,10 @@ function formatFileSize(size: number | undefined): string {
     }
 
     return `${fileSize.toFixed(2)} ${units[unitIndex]}`;
+}
+
+function getDownloadUrl(fileId: string): string {
+    return `${import.meta.env.VITE_API_BASE_URL}/file/${fileId}/download`;
 }
 </script>
 
@@ -370,7 +376,7 @@ function formatFileSize(size: number | undefined): string {
 
 .files-grid-header {
     display: grid;
-    grid-template-columns: 2fr 1fr 1fr 1.5fr;
+    grid-template-columns: 2fr 1fr 1fr;
     gap: 16px;
     padding: 12px 16px;
     background-color: #f5f5f5;
@@ -381,10 +387,12 @@ function formatFileSize(size: number | undefined): string {
 }
 
 .file-row {
+    position: relative;
     display: grid;
-    grid-template-columns: 2fr 1fr 1fr 1.5fr;
+    grid-template-columns: 2fr 1fr 1fr;
     gap: 16px;
     padding: 12px 16px;
+    padding-right: 48px;
     border-bottom: 1px solid #e0e0e0;
     align-items: center;
     transition: background-color 0.2s;
@@ -408,6 +416,8 @@ function formatFileSize(size: number | undefined): string {
 
 .file-icon {
     font-size: 20px;
+    margin-right: 8px;
+    color: rgba(0, 0, 0, 0.6);
 }
 
 .file-type {
@@ -421,12 +431,25 @@ function formatFileSize(size: number | undefined): string {
     color: rgba(0, 0, 0, 0.6);
 }
 
-.file-id {
-    font-size: 12px;
+.download-link {
+    position: absolute;
+    right: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 4px;
+    text-decoration: none;
     color: rgba(0, 0, 0, 0.6);
-    font-family: monospace;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    transition: background-color 0.2s, color 0.2s;
+}
+
+.download-link:hover {
+    background-color: rgba(98, 0, 238, 0.08);
+    color: #6200ee;
 }
 
 .empty-state {
