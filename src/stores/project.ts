@@ -54,6 +54,7 @@ export const useProjectStore = defineStore('project', () => {
             currentProject.value = newProject;
         } catch (e: any) {
             error.value = e.message;
+            throw e;
         }
     }
 
@@ -70,6 +71,7 @@ export const useProjectStore = defineStore('project', () => {
             }
         } catch (e: any) {
             error.value = e.message;
+            throw e;
         }
     }
 

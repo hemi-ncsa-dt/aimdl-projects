@@ -7,7 +7,7 @@ import { ProjectRole } from '@/types';
 import type { Project, ProjectMember, AutocompleteSuggestion, Person, ProjectFile } from '@/types';
 import FileUploader from './FileUploader.vue';
 import MarkdownEditor from './MarkdownEditor.vue';
-import { VForm, VTextField, VTextarea, VBtn, VSelect, VIcon, VAutocomplete, VCombobox } from 'vuetify/components';
+import { VForm, VTextField, VTextarea, VBtn, VSelect, VIcon, VAutocomplete, VCombobox, VCheckbox } from 'vuetify/components';
 import { getOrcidSuggestions, searchUsers } from '@/services/api';
 import { debounce } from 'lodash';
 
@@ -23,6 +23,9 @@ const project = ref<Partial<Project> & { members: ProjectMember[] }>({
     members: [],
     samples: [],
     files: [],
+    projectType: undefined,
+    instruments: [],
+    priority: undefined,
 });
 
 const isNew = ref(true);
@@ -41,6 +44,101 @@ const emailRule = [
 ];
 
 const roleOptions = Object.values(ProjectRole);
+
+const KNOWN_INSTRUMENTS = ['MAXIMA', 'HELIX', 'SPHINX'];
+
+interface InstrumentOption {
+    value: string;
+    label: string;
+    description: string;
+    url: string;
+}
+
+const instrumentOptions: InstrumentOption[] = [
+    {
+        value: 'MAXIMA',
+        label: 'MAXIMA',
+        description: 'Multimodal Automated X-ray Investigation of Materials',
+        url: 'https://hemi.jhu.edu/caimee/center-facilities/aimd-l/#1745259387828-044ce224-dc05',
+    },
+    {
+        value: 'HELIX',
+        label: 'HELIX',
+        description: '(description coming soon)',
+        url: '',
+    },
+    {
+        value: 'SPHINX',
+        label: 'SPHINX',
+        description: '(description coming soon)',
+        url: '',
+    },
+    {
+        value: 'other',
+        label: 'Other',
+        description: '',
+        url: '',
+    },
+];
+
+const projectTypeOptions = [
+    {
+        value: 'integrated',
+        title: 'Integrated project',
+        description: 'Experiments using AIMD-L as an integrated facility involving two or more experimental stations',
+    },
+    {
+        value: 'singleInstrument',
+        title: 'Single-instrument project',
+        description: 'Usage of one or more instruments in a stand-alone manner',
+    },
+    {
+        value: 'development',
+        title: 'Development project',
+        description: 'Work to develop the capabilities of AIMD-L, either as an integrated facility or of its individual stations',
+    },
+];
+
+const priorityOptions = [
+    { value: 1, title: 'CAIMEE principal investigator (or collaborator)' },
+    { value: 2, title: 'Researcher from primary partner institution' },
+    { value: 3, title: 'HEMI fellow' },
+    { value: 4, title: 'WSE faculty' },
+    { value: 5, title: 'Other JHU faculty' },
+    { value: 6, title: 'External researcher' },
+];
+
+const selectedInstruments = ref<string[]>([]);
+const otherInstrumentText = ref('');
+const isSaving = ref(false);
+const isSubmitting = ref(false);
+const formError = ref<string | null>(null);
+
+const singleInstrumentConflict = computed(() =>
+    project.value.projectType === 'singleInstrument' && selectedInstruments.value.length > 1
+);
+
+const initInstruments = (instruments: { name: string }[] | undefined) => {
+    if (!instruments?.length) {
+        selectedInstruments.value = [];
+        otherInstrumentText.value = '';
+        return;
+    }
+    const names = instruments.map(i => i.name);
+    const known = names.filter(n => KNOWN_INSTRUMENTS.includes(n));
+    const unknown = names.find(n => !KNOWN_INSTRUMENTS.includes(n));
+    const hasOther = !!unknown;
+    selectedInstruments.value = hasOther ? [...known, 'other'] : [...known];
+    if (unknown) {
+        otherInstrumentText.value = unknown;
+    }
+};
+
+watch([selectedInstruments, otherInstrumentText], () => {
+    project.value.instruments = selectedInstruments.value.map(i => ({
+        name: i === 'other' ? (otherInstrumentText.value.trim() || 'other') : i,
+    }));
+});
 
 onMounted(async () => {
     await authStore.fetchUser();
@@ -61,7 +159,9 @@ onMounted(async () => {
                     userId: m.userId || null,
                 })),
                 files: projectStore.currentProject.files || [],
+                priority: projectStore.currentProject.priority || undefined,
             };
+            initInstruments(projectStore.currentProject.instruments);
         }
     }
 });
@@ -164,28 +264,48 @@ const removeMember = (index: number) => {
 };
 
 const save = async () => {
-    if (isNew.value) {
-        const { name, description, status, members, samples, files } = project.value;
-        await projectStore.createProject({
-            name: name || '',
-            description: description || '',
-            status: status || 'draft',
-            members: members || [],
-            samples: samples || [],
-            files: files || [],
-        });
-    } else {
-        const { name, description, status, members, samples, files } = project.value;
-        await projectStore.updateProject(project.value._id!, { name, description, status, members, samples, files });
+    formError.value = null;
+    isSaving.value = true;
+    try {
+        if (isNew.value) {
+            const { name, description, status, members, samples, files, projectType, instruments, priority } = project.value;
+            await projectStore.createProject({
+                name: name || '',
+                description: description || '',
+                status: status || 'draft',
+                members: members || [],
+                samples: samples || [],
+                files: files || [],
+                projectType,
+                instruments: instruments || [],
+                priority,
+            });
+        } else {
+            const { name, description, status, members, samples, files, projectType, instruments, priority } = project.value;
+            await projectStore.updateProject(project.value._id!, { name, description, status, members, samples, files, projectType, instruments, priority });
+        }
+        router.push(`/proposal/${projectStore.currentProject?._id}`);
+    } catch (e: any) {
+        formError.value = e.message || 'An unexpected error occurred. Please try again.';
+    } finally {
+        isSaving.value = false;
     }
-    router.push(`/proposal/${projectStore.currentProject?._id}`);
 };
 
 const submitForReview = async () => {
-    project.value.status = 'under review';
-    const { name, description, status, members, samples, files } = project.value;
-    await projectStore.updateProject(project.value._id!, { name, description, status, members, samples, files });
-    router.push('/proposals');
+    formError.value = null;
+    isSubmitting.value = true;
+    try {
+        project.value.status = 'under review';
+        const { name, description, status, members, samples, files, projectType, instruments, priority } = project.value;
+        await projectStore.updateProject(project.value._id!, { name, description, status, members, samples, files, projectType, instruments, priority });
+        router.push('/proposals');
+    } catch (e: any) {
+        project.value.status = 'draft';
+        formError.value = e.message || 'An unexpected error occurred. Please try again.';
+    } finally {
+        isSubmitting.value = false;
+    }
 };
 
 const cancel = () => {
@@ -200,6 +320,43 @@ const cancel = () => {
 <template>
     <v-form>
         <v-text-field v-model="project.name" label="Project Name"></v-text-field>
+
+        <v-select v-model="project.projectType" :items="projectTypeOptions" item-title="title" item-value="value"
+            label="Project Type" class="my-2" :error="singleInstrumentConflict"
+            :error-messages="singleInstrumentConflict ? 'Single-instrument project requires exactly one instrument' : undefined">
+            <template #item="{ item, props: itemProps }">
+                <v-list-item v-bind="itemProps"
+                    :subtitle="projectTypeOptions.find(o => o.value === item.value)?.description" />
+            </template>
+        </v-select>
+
+        <div class="my-4">
+            <div class="text-subtitle-1 mb-1">Instruments</div>
+            <div v-for="instrument in instrumentOptions" :key="instrument.value">
+                <v-checkbox v-model="selectedInstruments" :value="instrument.value" hide-details density="compact">
+                    <template #label>
+                        <span class="d-flex align-center flex-wrap">
+                            <a v-if="instrument.url" :href="instrument.url" target="_blank" rel="noopener noreferrer"
+                                class="text-primary font-weight-medium" @click.stop>{{ instrument.label }}</a>
+                            <span v-else class="font-weight-medium">{{ instrument.label }}</span>
+                            <span v-if="instrument.description" class="text-caption text-grey-darken-1 ml-2">
+                                &mdash; {{ instrument.description }}
+                            </span>
+                        </span>
+                    </template>
+                </v-checkbox>
+                <v-text-field v-if="instrument.value === 'other' && selectedInstruments.includes('other')"
+                    v-model="otherInstrumentText" label="Please specify" density="compact" variant="outlined"
+                    class="ml-8 mt-1" style="max-width: 400px" />
+            </div>
+            <div v-if="singleInstrumentConflict" class="text-caption text-error mt-2 ml-2">
+                Single-instrument project requires exactly one instrument selected.
+            </div>
+        </div>
+
+        <v-select v-model="project.priority" :items="priorityOptions" item-title="title" item-value="value"
+            label="Access Category" placeholder="Select access category" class="my-2" />
+
         <MarkdownEditor v-model="project.description" label="Public Overview" class="my-4" />
 
         <h2>Members</h2>
@@ -227,10 +384,16 @@ const cancel = () => {
             File uploads will be available after saving the project.
         </div>
 
+        <v-alert v-if="formError" type="error" variant="tonal" class="mt-4" closable @click:close="formError = null">
+            {{ formError }}
+        </v-alert>
+
         <div class="mt-4">
-            <v-btn @click="save" color="primary">Save Draft</v-btn>
-            <v-btn @click="submitForReview" color="secondary" class="ml-2">Submit for Review</v-btn>
-            <v-btn @click="cancel" class="ml-2">Cancel</v-btn>
+            <v-btn @click="save" color="primary" :loading="isSaving" :disabled="isSubmitting">Save Draft</v-btn>
+            <v-btn @click="submitForReview" color="secondary" class="ml-2" :loading="isSubmitting"
+                :disabled="isSaving">Submit
+                for Review</v-btn>
+            <v-btn @click="cancel" class="ml-2" :disabled="isSaving || isSubmitting">Cancel</v-btn>
         </div>
     </v-form>
 </template>

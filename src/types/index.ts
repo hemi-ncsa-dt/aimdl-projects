@@ -1,4 +1,5 @@
 export type ProjectStatus = 'draft' | 'under review' | 'accepted' | 'rejected';
+export type ProjectType = 'integrated' | 'singleInstrument' | 'development';
 
 export enum FileType {
     PROPOSAL = 'proposal',
@@ -27,6 +28,9 @@ export interface Project {
     submissionFolderId: string;
     files?: ProjectFile[];
     projectId: string;
+    projectType?: ProjectType;
+    instruments?: { name: string }[];
+    priority?: number;
 }
 
 export interface Sample {
