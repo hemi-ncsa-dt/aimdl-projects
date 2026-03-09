@@ -64,14 +64,14 @@ const instrumentOptions: InstrumentOption[] = [
     {
         value: 'HELIX',
         label: 'HELIX',
-        description: '(description coming soon)',
-        url: '',
+        description: 'High-throughput Extreme Laser Impact eXperiments',
+        url: 'https://hemi.jhu.edu/caimee/center-facilities/aimd-l/#1745356027264-0fcae1de-66a4',
     },
     {
         value: 'SPHINX',
         label: 'SPHINX',
-        description: '(description coming soon)',
-        url: '',
+        description: 'Scanning Probe for High-resolution INdentation eXperiments',
+        url: 'https://hemi.jhu.edu/caimee/center-facilities/aimd-l/#1745438879173-208b1f97-0fd2',
     },
     {
         value: 'other',
