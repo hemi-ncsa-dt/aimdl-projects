@@ -12,7 +12,7 @@ export default defineConfig({
   ],
   server: {
     host: true,
-    allowedHosts: ['projects.local.xarthisius.xyz'],
+    allowedHosts: ['projects.local.xarthisius.xyz', 'projects.igsn.xarthisius.xyz', 'projects.htmdec.org'],
   },
   resolve: {
     alias: {

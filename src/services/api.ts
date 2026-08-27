@@ -1,6 +1,7 @@
 import type { Project, Person, AutocompleteSuggestion, UploadResponse, FileUploadResult } from '@/types';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+// Support runtime configuration from Docker or build-time from Vite
+const API_BASE_URL = (window as any).ENV?.VITE_API_BASE_URL || import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
 
 async function handleResponse<T>(response: Response): Promise<T> {
     if (!response.ok) {
