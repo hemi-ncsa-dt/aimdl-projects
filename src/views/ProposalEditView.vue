@@ -10,39 +10,61 @@ const router = useRouter();
 const route = useRoute();
 
 const project = ref<Partial<Project>>({});
-const isNew = ref(false);
+const saving = ref(false);
+const submitting = ref(false);
+const formError = ref<string | null>(null);
 
 onMounted(async () => {
     const id = route.params.id as string;
-    if (id) {
-        await projectStore.fetchProject(id);
-        if (projectStore.currentProject) {
-            project.value = { ...projectStore.currentProject };
-        }
+    if (!id) return;
+    await projectStore.fetchProject(id);
+    if (projectStore.currentProject) {
+        project.value = { ...projectStore.currentProject };
     }
 });
 
 async function save(projectData: Partial<Project>) {
-    await projectStore.updateProject(project.value._id!, projectData);
-    router.push({ name: 'proposal-detail', params: { id: project.value._id } });
+    if (!project.value._id) return;
+    formError.value = null;
+    saving.value = true;
+    try {
+        await projectStore.updateProject(project.value._id, projectData);
+        router.push({ name: 'proposal-detail', params: { id: project.value._id } });
+    } catch (e: any) {
+        formError.value = e.message || 'An unexpected error occurred. Please try again.';
+    } finally {
+        saving.value = false;
+    }
 }
 
 async function submit(projectData: Partial<Project>) {
-    projectData.status = 'under review';
-    await projectStore.updateProject(project.value._id!, projectData);
-    router.push({ name: 'proposal-detail', params: { id: project.value._id } });
+    if (!project.value._id) return;
+    formError.value = null;
+    submitting.value = true;
+    try {
+        await projectStore.updateProject(project.value._id, { ...projectData, status: 'under review' });
+        router.push({ name: 'proposals' });
+    } catch (e: any) {
+        formError.value = e.message || 'An unexpected error occurred. Please try again.';
+    } finally {
+        submitting.value = false;
+    }
 }
 
-async function del(id: string) {
-    await projectStore.deleteProject(id);
-    router.push({ name: 'proposals' });
+function cancel() {
+    if (project.value._id) {
+        router.push({ name: 'proposal-detail', params: { id: project.value._id } });
+    } else {
+        router.push({ name: 'proposals' });
+    }
 }
 </script>
 
 <template>
     <div>
         <h1>Edit Proposal</h1>
-        <ProjectForm :project="project" :is-new="false" @save="save" @submit="submit" @delete="del" />
+        <ProjectForm :project="project" :is-new="false" :saving="saving" :submitting="submitting"
+            v-model:error="formError" @save="save" @submit="submit" @cancel="cancel" />
     </div>
 </template>
 
