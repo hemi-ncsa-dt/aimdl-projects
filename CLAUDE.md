@@ -180,5 +180,5 @@ throwaway session — delete the user and its projects afterwards. An invalid to
   store writes or `useRoute()` into the form.
 - Deleting a proposal lives only on `ProposalDetailView` (drafts only). The form has no
   delete affordance.
-- Untracked in the repo root: `DOCKER.md`, `MARKDOWN_SUPPORT.md`, `vision.pdf`.
-  `README.md` is still the unmodified Vue/Vite scaffold text.
+- `vision.pdf` sits untracked in the repo root, pending a decision on whether a binary
+  belongs in git.
