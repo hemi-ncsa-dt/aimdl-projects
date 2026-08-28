@@ -4,7 +4,9 @@
             &larr; Back to Proposals
         </button>
     </div>
-    <div v-if="project" class="proposal-detail-container">
+    <div v-if="loading" class="loading-indicator">Loading...</div>
+    <div v-else-if="error" class="error-message">{{ error }}</div>
+    <div v-else-if="project" class="proposal-detail-container">
         <div class="proposal-detail-card">
             <div class="proposal-detail-header">
                 <h1 class="proposal-detail-title">{{ project.projectId }}: {{ project.name }}</h1>
@@ -114,17 +116,15 @@
             <div v-else class="empty-state">No files uploaded yet.</div>
         </div>
     </div>
-    <div v-else-if="loading" class="loading-indicator">Loading...</div>
-    <div v-else-if="error" class="error-message">{{ error }}</div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useProjectStore } from '@/stores/project';
 import { storeToRefs } from 'pinia';
-import type { Project, ProjectStatus } from '@/types';
-import { getProject } from '@/services/api';
+import type { ProjectStatus } from '@/types';
+import { getFileDownloadUrl } from '@/services/api';
 import {
     instrumentUrl,
     instrumentDescription,
@@ -138,28 +138,12 @@ import { VIcon } from 'vuetify/components';
 const route = useRoute();
 const router = useRouter();
 const projectStore = useProjectStore();
-const { projects, loading, error } = storeToRefs(projectStore);
-const project = ref<Project | null>(null);
+const authStore = useAuthStore();
+// The store owns fetching plus the loading/error state; don't duplicate either here.
+const { currentProject: project, loading, error } = storeToRefs(projectStore);
 
-onMounted(async () => {
-    const projectId = route.params.id as string;
-    const existingProject = projects.value.find(p => p._id === projectId);
-
-    if (existingProject) {
-        project.value = existingProject;
-    } else {
-        const authStore = useAuthStore();
-        if (authStore.token) {
-            try {
-                loading.value = true;
-                project.value = await getProject(projectId, authStore.token);
-            } catch (e: any) {
-                error.value = e.message;
-            } finally {
-                loading.value = false;
-            }
-        }
-    }
+onMounted(() => {
+    projectStore.fetchProject(route.params.id as string);
 });
 
 function goBack() {
@@ -221,7 +205,7 @@ function formatFileSize(size: number | undefined): string {
 }
 
 function getDownloadUrl(fileId: string): string {
-    return `${import.meta.env.VITE_API_BASE_URL}/file/${fileId}/download`;
+    return getFileDownloadUrl(fileId, authStore.token);
 }
 </script>
 

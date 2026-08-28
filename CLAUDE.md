@@ -82,9 +82,9 @@ window.ENV?.VITE_API_BASE_URL || import.meta.env.VITE_API_BASE_URL || 'http://lo
 When adding config, update *all* of: `.env.local`, `public/env-config.js`,
 `99-vite-envsubst.sh`, and `DOCKER.md`.
 
-Known inconsistency: `getDownloadUrl()` in `ProposalDetailView.vue` uses
-`import.meta.env.VITE_API_BASE_URL` directly, bypassing the `window.ENV` runtime
-override — it breaks in Docker unless the URL is also baked in at build time.
+File downloads go through `getFileDownloadUrl()` in `api.ts`, which uses the same
+resolution and appends `?token=`. The token must be in the query string: an `<a href>`
+download cannot set the `Girder-Token` header, and Girder answers **401** without it.
 
 ## Domain model (`src/types/index.ts`)
 
@@ -145,7 +145,9 @@ author-controlled, so treat any widening of the markdown feature set as a XSS qu
 - Option lists shown in more than one place (instruments, project types, access
   categories) and their display labels live in `src/constants/project.ts` — the form and
   the detail view both read from there. Don't re-declare them in a component.
-- Stores own loading/error state; views read it via `storeToRefs`.
+- Stores own loading/error state; views read it via `storeToRefs`. `currentProject`
+  survives navigation, so a detail template must test `loading` **before** the project,
+  or a stale proposal flashes while the next one loads.
 - `.editorconfig` says 2-space indent, but **existing `src/` files use 4 spaces**. Match
   the file you're editing.
 - Styling is a mix: Vuetify components inside forms, hand-written scoped CSS with
@@ -175,9 +177,6 @@ throwaway session — delete the user and its projects afterwards. An invalid to
   store writes or `useRoute()` into the form.
 - Deleting a proposal lives only on `ProposalDetailView` (drafts only). The form has no
   delete affordance.
-- `ProposalDetailView` bypasses `projectStore.fetchProject` and calls `getProject`
-  directly while mutating the store's `loading`/`error` refs.
 - Vuetify is pinned to a **4.0.0-alpha** release; API breakage between alphas is likely.
-- `console.log` calls remain in `api.ts` and `ProjectForm.vue`.
 - Untracked in the repo root: `DOCKER.md`, `MARKDOWN_SUPPORT.md`, `vision.pdf`.
   `README.md` is still the unmodified Vue/Vite scaffold text.

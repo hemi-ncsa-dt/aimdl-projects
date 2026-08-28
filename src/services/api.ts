@@ -3,6 +3,19 @@ import type { Project, Person, AutocompleteSuggestion, UploadResponse, FileUploa
 // Support runtime configuration from Docker or build-time from Vite
 const API_BASE_URL = (window as any).ENV?.VITE_API_BASE_URL || import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
 
+/**
+ * Absolute URL for downloading a file.
+ *
+ * Uses the same runtime-resolved base as every other call, so it keeps working when the
+ * container is pointed at a different backend. The token goes in the query string
+ * because a browser-initiated download (`<a href>`) cannot set the Girder-Token header,
+ * and Girder answers 401 without it.
+ */
+export function getFileDownloadUrl(fileId: string, token?: string | null): string {
+    const url = `${API_BASE_URL}/file/${fileId}/download`;
+    return token ? `${url}?token=${encodeURIComponent(token)}` : url;
+}
+
 async function handleResponse<T>(response: Response): Promise<T> {
     if (!response.ok) {
         let error;
