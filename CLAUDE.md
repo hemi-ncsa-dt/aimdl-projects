@@ -29,7 +29,7 @@ Node `^20.19 || >=22.12` is required.
 
 ## Stack
 
-Vue 3 (`<script setup>`) · TypeScript · Vite 7 · vue-router · Pinia · Vuetify 4 (alpha) ·
+Vue 3 (`<script setup>`) · TypeScript · Vite 7 · vue-router · Pinia · Vuetify 4 ·
 `@mdi/font` icons · lodash (`debounce` only).
 
 `marked` and `vue-markdown-editor` are in `package.json` but **unused** — markdown is
@@ -180,6 +180,5 @@ throwaway session — delete the user and its projects afterwards. An invalid to
   store writes or `useRoute()` into the form.
 - Deleting a proposal lives only on `ProposalDetailView` (drafts only). The form has no
   delete affordance.
-- Vuetify is pinned to a **4.0.0-alpha** release; API breakage between alphas is likely.
 - Untracked in the repo root: `DOCKER.md`, `MARKDOWN_SUPPORT.md`, `vision.pdf`.
   `README.md` is still the unmodified Vue/Vite scaffold text.
