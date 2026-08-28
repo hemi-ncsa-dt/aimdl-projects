@@ -334,6 +334,7 @@ const cancel = () => {
                 <v-list-item v-bind="itemProps"
                     :subtitle="projectTypeOptions.find(o => o.value === item.value)?.description" />
             </template>
+
         </v-select>
 
         <div class="my-4">
@@ -341,11 +342,11 @@ const cancel = () => {
             <div v-for="instrument in instrumentOptions" :key="instrument.value">
                 <v-checkbox v-model="selectedInstruments" :value="instrument.value" hide-details density="compact">
                     <template #label>
-                        <span class="d-flex align-center flex-wrap">
+                        <span class="instrument-label">
                             <a v-if="instrument.url" :href="instrument.url" target="_blank" rel="noopener noreferrer"
                                 class="text-primary font-weight-medium" @click.stop>{{ instrument.label }}</a>
                             <span v-else class="font-weight-medium">{{ instrument.label }}</span>
-                            <span v-if="instrument.description" class="text-caption text-grey-darken-1 ml-2">
+                            <span v-if="instrument.description" class="text-caption text-grey-darken-1">
                                 &mdash; {{ instrument.description }}
                             </span>
                         </span>
@@ -366,20 +367,20 @@ const cancel = () => {
         <MarkdownEditor v-model="form.description" label="Public Overview" class="my-4" />
 
         <h2>Members</h2>
-        <div v-for="(member, index) in form.members" :key="index" class="d-flex align-center my-2">
-            <v-combobox v-model="member.firstName" :items="firstNameSuggestions" label="First Name" class="mr-2"
+        <div v-for="(member, index) in form.members" :key="index" class="member-row">
+            <v-combobox v-model="member.firstName" :items="firstNameSuggestions" label="First Name"
                 @update:search="onUserSearch" @update:model-value="(value: string) => onFirstNameChange(value, member)">
             </v-combobox>
-            <v-combobox v-model="member.lastName" :items="lastNameSuggestions" label="Last Name" class="mr-2"
+            <v-combobox v-model="member.lastName" :items="lastNameSuggestions" label="Last Name"
                 @update:search="onUserSearch" @update:model-value="(value: string) => onLastNameChange(value, member)">
             </v-combobox>
-            <v-text-field v-model="member.email" label="Email" :rules="emailRule" class="mr-2"></v-text-field>
+            <v-text-field v-model="member.email" label="Email" :rules="emailRule"></v-text-field>
             <v-combobox v-model="member.orcidId" :items="orcidSuggestions" item-title="text" item-value="text"
-                :return-object="false" label="ORCID iD" :rules="orcidRule" class="mr-2"
+                :return-object="false" label="ORCID iD" :rules="orcidRule"
                 @focus="onOrcidFocus(member)" @blur="onOrcidBlur"
                 @update:modelValue="(value: string) => onOrcidSelect(value, member)"></v-combobox>
-            <v-select v-model="member.role" :items="roleOptions" label="Role" class="mr-2"></v-select>
-            <v-btn icon @click="removeMember(index)">
+            <v-select v-model="member.role" :items="roleOptions" label="Role"></v-select>
+            <v-btn icon variant="text" :aria-label="`Remove member ${index + 1}`" @click="removeMember(index)">
                 <v-icon>mdi-delete</v-icon>
             </v-btn>
         </div>
@@ -390,19 +391,20 @@ const cancel = () => {
             File uploads will be available after saving the project.
         </div>
 
-        <v-alert v-if="error" type="error" variant="tonal" class="mt-4" closable
-            @click:close="emit('update:error', null)">
-            {{ error }}
-        </v-alert>
-
-        <div class="mt-4">
-            <v-btn @click="save" color="primary" :loading="saving" :disabled="submitting">
-                {{ isNew ? 'Create Draft' : 'Save Draft' }}
-            </v-btn>
-            <v-btn @click="submitForReview" color="secondary" class="ml-2" :loading="submitting" :disabled="saving">
-                Submit for Review
-            </v-btn>
-            <v-btn @click="cancel" class="ml-2" :disabled="isBusy">Cancel</v-btn>
+        <div class="action-bar">
+            <v-alert v-if="error" type="error" variant="tonal" density="compact" class="mb-3" closable
+                @click:close="emit('update:error', null)">
+                {{ error }}
+            </v-alert>
+            <div class="action-bar__buttons">
+                <v-btn @click="save" color="primary" :loading="saving" :disabled="submitting">
+                    {{ isNew ? 'Create Draft' : 'Save Draft' }}
+                </v-btn>
+                <v-btn @click="submitForReview" color="secondary" :loading="submitting" :disabled="saving">
+                    Submit for Review
+                </v-btn>
+                <v-btn @click="cancel" variant="text" :disabled="isBusy">Cancel</v-btn>
+            </div>
         </div>
 
         <v-dialog v-model="confirmState.open" max-width="480" persistent>
@@ -420,3 +422,56 @@ const cancel = () => {
         </v-dialog>
     </v-form>
 </template>
+
+<style scoped>
+/* One shared template, so every member row's columns line up (2.1). The minimums stop
+   fields collapsing into unreadable slivers; below the D2 laptop floor the row wraps
+   instead of compressing further. */
+.member-row {
+    display: grid;
+    grid-template-columns:
+        minmax(9rem, 1fr) minmax(9rem, 1fr) minmax(14rem, 1.6fr)
+        minmax(12rem, 1.4fr) minmax(8rem, 0.9fr) auto;
+    gap: 0 12px;
+    align-items: start;
+    margin: 8px 0;
+}
+
+/* 1024px is the supported floor (D2) and the full row still fits there. Below it, wrap to
+   two equal columns rather than letting fields fall into the icon-sized track. */
+@media (max-width: 1023.98px) {
+    .member-row {
+        grid-template-columns: minmax(10rem, 1fr) minmax(10rem, 1fr);
+        row-gap: 4px;
+    }
+
+    .member-row > .v-btn {
+        justify-self: start;
+    }
+}
+
+.instrument-label {
+    display: inline;
+    line-height: 1.5;
+}
+
+.instrument-label .text-caption {
+    margin-left: 4px;
+}
+
+/* Keep the actions reachable on a form taller than the viewport (2.3). */
+.action-bar {
+    position: sticky;
+    bottom: 0;
+    margin-top: 24px;
+    padding: 12px 0;
+    background: rgb(var(--v-theme-surface));
+    border-top: 1px solid rgba(0, 0, 0, 0.12);
+}
+
+.action-bar__buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+</style>
