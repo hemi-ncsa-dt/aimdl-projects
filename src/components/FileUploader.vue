@@ -193,11 +193,10 @@ const isUploading = computed(() => uploadingFiles.value.size > 0);
 
 <template>
     <div class="file-uploader">
-        <h3>Documents</h3>
 
         <!-- Display uploaded files -->
         <div v-if="uploadedFiles.length > 0" class="uploaded-files mb-4">
-            <h4>Uploaded Files</h4>
+            <h4 class="uploaded-title">Uploaded Files</h4>
             <v-card v-for="(file, index) in uploadedFiles" :key="file.fileId" class="mb-2">
                 <v-card-text class="d-flex align-center">
                     <v-select :model-value="file.type" @update:model-value="(value) => updateFileType(index, value)"
@@ -245,7 +244,14 @@ const isUploading = computed(() => uploadingFiles.value.size > 0);
 
 <style scoped>
 .file-uploader {
-    margin: 20px 0;
+    margin: 0;
+}
+
+.uploaded-title {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--c-text-muted);
+    margin: 0 0 10px;
 }
 
 .uploaded-files h4 {

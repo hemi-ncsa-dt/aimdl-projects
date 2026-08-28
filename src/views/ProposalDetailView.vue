@@ -199,7 +199,7 @@ function getDownloadUrl(fileId: string): string {
 .back-button {
     background: none;
     border: none;
-    color: #6200ee;
+    color: var(--c-primary);
     cursor: pointer;
     font-size: 14px;
     font-weight: 500;
@@ -228,7 +228,7 @@ function getDownloadUrl(fileId: string): string {
 
 .edit-button {
     margin-left: 16px;
-    background-color: #6200ee;
+    background-color: var(--c-primary);
     color: white;
     border: none;
     border-radius: 4px;
@@ -238,7 +238,7 @@ function getDownloadUrl(fileId: string): string {
 
 .delete-button {
     margin-left: 16px;
-    background-color: #f44336;
+    background-color: var(--c-danger);
     color: white;
     border: none;
     border-radius: 4px;
@@ -257,34 +257,6 @@ function getDownloadUrl(fileId: string): string {
     color: rgba(0, 0, 0, 0.87);
 }
 
-.status-chip {
-    display: inline-block;
-    padding: 4px 12px;
-    font-size: 12px;
-    font-weight: 500;
-    border-radius: 16px;
-    text-transform: capitalize;
-}
-
-.status-chip--draft {
-    background-color: #e0e0e0;
-    color: rgba(0, 0, 0, 0.87);
-}
-
-.status-chip--under-review {
-    background-color: #ffc107;
-    color: rgba(0, 0, 0, 0.87);
-}
-
-.status-chip--accepted {
-    background-color: #4caf50;
-    color: white;
-}
-
-.status-chip--rejected {
-    background-color: #f44336;
-    color: white;
-}
 
 .loading-indicator,
 .error-message {
@@ -294,7 +266,7 @@ function getDownloadUrl(fileId: string): string {
 }
 
 .error-message {
-    color: #b00020;
+    color: var(--c-error);
 }
 
 /* Details Section */
@@ -342,18 +314,18 @@ function getDownloadUrl(fileId: string): string {
     font-size: 12px;
     font-weight: 500;
     border-radius: 10px;
-    background-color: #e0e0e0;
+    background-color: var(--c-border);
     color: rgba(0, 0, 0, 0.87);
 }
 
 .instrument-chip--link {
-    background-color: #ede7f6;
-    color: #6200ee;
+    background-color: var(--c-primary-wash);
+    color: var(--c-primary);
     text-decoration: none;
 }
 
 .instrument-chip--link:hover {
-    background-color: #d1c4e9;
+    background-color: var(--c-primary-wash-strong);
 }
 
 /* Members Section */
@@ -375,7 +347,7 @@ function getDownloadUrl(fileId: string): string {
     justify-content: space-between;
     align-items: center;
     padding: 10px 12px;
-    border: 1px solid #e0e0e0;
+    border: 1px solid var(--c-border);
     border-radius: 4px;
     transition: box-shadow 0.2s;
 }
@@ -394,7 +366,7 @@ function getDownloadUrl(fileId: string): string {
     width: 36px;
     height: 36px;
     border-radius: 50%;
-    background-color: #6200ee;
+    background-color: var(--c-primary);
     color: white;
     display: flex;
     align-items: center;
@@ -440,17 +412,17 @@ function getDownloadUrl(fileId: string): string {
 }
 
 .role-badge--pi {
-    background-color: #6200ee;
+    background-color: var(--c-primary);
     color: white;
 }
 
 .role-badge--manager {
-    background-color: #03dac6;
+    background-color: var(--c-secondary);
     color: rgba(0, 0, 0, 0.87);
 }
 
 .role-badge--user {
-    background-color: #e0e0e0;
+    background-color: var(--c-border);
     color: rgba(0, 0, 0, 0.87);
 }
 
@@ -470,7 +442,7 @@ function getDownloadUrl(fileId: string): string {
     grid-template-columns: 2fr 1fr 1fr;
     gap: 16px;
     padding: 12px 16px;
-    background-color: #f5f5f5;
+    background-color: var(--c-surface-muted);
     border-radius: 4px 4px 0 0;
     font-weight: 500;
     font-size: 14px;
@@ -484,13 +456,13 @@ function getDownloadUrl(fileId: string): string {
     gap: 16px;
     padding: 12px 16px;
     padding-right: 48px;
-    border-bottom: 1px solid #e0e0e0;
+    border-bottom: 1px solid var(--c-border);
     align-items: center;
     transition: background-color 0.2s;
 }
 
 .file-row:hover {
-    background-color: #f5f5f5;
+    background-color: var(--c-surface-muted);
 }
 
 .file-row:last-child {
@@ -540,7 +512,7 @@ function getDownloadUrl(fileId: string): string {
 
 .download-link:hover {
     background-color: rgba(98, 0, 238, 0.08);
-    color: #6200ee;
+    color: var(--c-primary);
 }
 
 .empty-state {

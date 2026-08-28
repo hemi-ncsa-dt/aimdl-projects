@@ -326,7 +326,9 @@ const cancel = () => {
 
 <template>
     <v-form ref="formRef">
-        <v-text-field v-model="form.name" label="Project Name" :rules="nameRule"></v-text-field>
+        <section class="form-card">
+            <h2 class="section-title">Overview</h2>
+            <v-text-field v-model="form.name" label="Project Name" :rules="nameRule"></v-text-field>
 
         <v-select v-model="form.projectType" :items="projectTypeOptions" item-title="title" item-value="value"
             label="Project Type" class="my-2">
@@ -337,8 +339,14 @@ const cancel = () => {
 
         </v-select>
 
-        <div class="my-4">
-            <div class="text-subtitle-1 mb-1">Instruments</div>
+            <v-select v-model="form.priority" :items="priorityOptions" item-title="title" item-value="value"
+                label="Access Category" placeholder="Select access category" class="my-2" />
+
+            <MarkdownEditor v-model="form.description" label="Public Overview" class="my-4" />
+        </section>
+
+        <section class="form-card">
+            <h2 class="section-title">Instruments</h2>
             <div v-for="instrument in instrumentOptions" :key="instrument.value">
                 <v-checkbox v-model="selectedInstruments" :value="instrument.value" hide-details density="compact">
                     <template #label>
@@ -359,37 +367,37 @@ const cancel = () => {
             <div v-if="singleInstrumentConflict" class="text-caption text-error mt-2 ml-2">
                 Single-instrument project requires exactly one instrument selected.
             </div>
-        </div>
+        </section>
 
-        <v-select v-model="form.priority" :items="priorityOptions" item-title="title" item-value="value"
-            label="Access Category" placeholder="Select access category" class="my-2" />
+        <section class="form-card">
+            <h2 class="section-title">Team members</h2>
+            <div v-for="(member, index) in form.members" :key="index" class="member-row">
+                <v-combobox v-model="member.firstName" :items="firstNameSuggestions" label="First Name"
+                    @update:search="onUserSearch" @update:model-value="(value: string) => onFirstNameChange(value, member)">
+                </v-combobox>
+                <v-combobox v-model="member.lastName" :items="lastNameSuggestions" label="Last Name"
+                    @update:search="onUserSearch" @update:model-value="(value: string) => onLastNameChange(value, member)">
+                </v-combobox>
+                <v-text-field v-model="member.email" label="Email" :rules="emailRule"></v-text-field>
+                <v-combobox v-model="member.orcidId" :items="orcidSuggestions" item-title="text" item-value="text"
+                    :return-object="false" label="ORCID iD" :rules="orcidRule"
+                    @focus="onOrcidFocus(member)" @blur="onOrcidBlur"
+                    @update:modelValue="(value: string) => onOrcidSelect(value, member)"></v-combobox>
+                <v-select v-model="member.role" :items="roleOptions" label="Role"></v-select>
+                <v-btn icon variant="text" :aria-label="`Remove member ${index + 1}`" @click="removeMember(index)">
+                    <v-icon>mdi-delete</v-icon>
+                </v-btn>
+            </div>
+            <v-btn @click="addMember" class="my-2">Add Member</v-btn>
+        </section>
 
-        <MarkdownEditor v-model="form.description" label="Public Overview" class="my-4" />
-
-        <h2>Members</h2>
-        <div v-for="(member, index) in form.members" :key="index" class="member-row">
-            <v-combobox v-model="member.firstName" :items="firstNameSuggestions" label="First Name"
-                @update:search="onUserSearch" @update:model-value="(value: string) => onFirstNameChange(value, member)">
-            </v-combobox>
-            <v-combobox v-model="member.lastName" :items="lastNameSuggestions" label="Last Name"
-                @update:search="onUserSearch" @update:model-value="(value: string) => onLastNameChange(value, member)">
-            </v-combobox>
-            <v-text-field v-model="member.email" label="Email" :rules="emailRule"></v-text-field>
-            <v-combobox v-model="member.orcidId" :items="orcidSuggestions" item-title="text" item-value="text"
-                :return-object="false" label="ORCID iD" :rules="orcidRule"
-                @focus="onOrcidFocus(member)" @blur="onOrcidBlur"
-                @update:modelValue="(value: string) => onOrcidSelect(value, member)"></v-combobox>
-            <v-select v-model="member.role" :items="roleOptions" label="Role"></v-select>
-            <v-btn icon variant="text" :aria-label="`Remove member ${index + 1}`" @click="removeMember(index)">
-                <v-icon>mdi-delete</v-icon>
-            </v-btn>
-        </div>
-        <v-btn @click="addMember" class="my-2">Add Member</v-btn>
-
-        <FileUploader v-if="form.submissionFolderId" v-model="form.files!" :folder-id="form.submissionFolderId" />
-        <div v-else class="my-4 text-caption text-grey">
-            File uploads will be available after saving the project.
-        </div>
+        <section class="form-card">
+            <h2 class="section-title">Documents</h2>
+            <FileUploader v-if="form.submissionFolderId" v-model="form.files!" :folder-id="form.submissionFolderId" />
+            <div v-else class="text-caption text-grey">
+                File uploads will be available after saving the project.
+            </div>
+        </section>
 
         <div class="action-bar">
             <v-alert v-if="error" type="error" variant="tonal" density="compact" class="mb-3" closable
@@ -424,6 +432,25 @@ const cancel = () => {
 </template>
 
 <style scoped>
+/* Match the detail view: a stack of cards in a centred column, rather than a full-bleed
+   run of inputs (3.3). */
+.form-card {
+    background: var(--c-surface);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-card);
+    padding: 24px;
+    margin-bottom: 16px;
+}
+
+/* One treatment for every peer section (3.4) — Instruments, Team members and Documents
+   previously used three different heading sizes. */
+.section-title {
+    font-size: 20px;
+    font-weight: 500;
+    margin: 0 0 16px;
+    color: var(--c-text);
+}
+
 /* One shared template, so every member row's columns line up (2.1). The minimums stop
    fields collapsing into unreadable slivers; below the D2 laptop floor the row wraps
    instead of compressing further. */
@@ -463,10 +490,12 @@ const cancel = () => {
 .action-bar {
     position: sticky;
     bottom: 0;
-    margin-top: 24px;
-    padding: 12px 0;
-    background: rgb(var(--v-theme-surface));
-    border-top: 1px solid rgba(0, 0, 0, 0.12);
+    margin-top: 16px;
+    padding: 12px 24px;
+    background: var(--c-surface);
+    border-top: 1px solid var(--c-border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-card);
 }
 
 .action-bar__buttons {

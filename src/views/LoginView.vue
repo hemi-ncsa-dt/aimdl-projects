@@ -40,7 +40,7 @@ function login(url: string) {
     align-items: center;
     height: calc(100vh - 64px);
     /* Subtract app bar height */
-    background-color: #f5f5f5;
+    background-color: var(--c-surface-muted);
 }
 
 .login-card {
@@ -71,7 +71,7 @@ function login(url: string) {
     font-weight: 500;
     text-transform: uppercase;
     color: #fff;
-    background-color: #6200ee;
+    background-color: var(--c-primary);
     border: none;
     border-radius: 4px;
     cursor: pointer;
@@ -79,11 +79,11 @@ function login(url: string) {
 }
 
 .login-button:hover {
-    background-color: #3700b3;
+    background-color: var(--c-primary-dark);
 }
 
 .error-message {
-    color: #b00020;
+    color: var(--c-error);
     margin-bottom: 16px;
     text-align: center;
 }

@@ -81,12 +81,12 @@ const insertMarkdown = (before: string, after: string = '') => {
     display: flex;
     gap: 8px;
     padding: 8px 0;
-    border-bottom: 1px solid #e0e0e0;
+    border-bottom: 1px solid var(--c-border);
 }
 
 .toolbar-btn {
     padding: 6px 12px;
-    background-color: #f5f5f5;
+    background-color: var(--c-surface-muted);
     border: 1px solid #ddd;
     border-radius: 4px;
     cursor: pointer;
@@ -95,7 +95,7 @@ const insertMarkdown = (before: string, after: string = '') => {
 }
 
 .toolbar-btn:hover {
-    background-color: #e0e0e0;
+    background-color: var(--c-border);
 }
 
 .toolbar-btn:active {
@@ -105,7 +105,7 @@ const insertMarkdown = (before: string, after: string = '') => {
 .preview-content {
     min-height: 200px;
     padding: 16px;
-    background-color: #fafafa;
+    background-color: var(--c-surface-sunk);
     border-radius: 4px;
     line-height: 1.6;
 }

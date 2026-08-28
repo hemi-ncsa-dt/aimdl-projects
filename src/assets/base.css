@@ -1,0 +1,76 @@
+/**
+ * Design tokens.
+ *
+ * The app's palette is Material Design 2 purple. It used to live as ~19 hardcoded hex
+ * values spread across scoped component styles while Vuetify rendered its own untouched
+ * blue-and-teal defaults, so the same button was purple on one page and blue on another.
+ * These are the single source; `plugins/vuetify.ts` feeds the same values to Vuetify so
+ * components and hand-written CSS resolve to one palette.
+ */
+:root {
+    /* brand */
+    --c-primary: #6200ee;
+    --c-primary-dark: #3700b3;
+    --c-primary-wash: #ede7f6;
+    --c-primary-wash-strong: #d1c4e9;
+    --c-secondary: #03dac6;
+
+    /* surfaces and text */
+    --c-surface: #ffffff;
+    --c-surface-sunk: #fafafa;
+    --c-surface-muted: #f5f5f5;
+    --c-border: #e0e0e0;
+    --c-text: rgba(0, 0, 0, 0.87);
+    --c-text-muted: rgba(0, 0, 0, 0.6);
+    --c-text-faint: rgba(0, 0, 0, 0.38);
+    --c-on-primary: #ffffff;
+
+    /* status — also used by the proposal status chips */
+    --c-error: #b00020;
+    --c-danger: #f44336;
+    --c-warning: #ffc107;
+    --c-success: #4caf50;
+
+    /* elevation */
+    --shadow-card:
+        0 2px 1px -1px rgba(0, 0, 0, 0.2),
+        0 1px 1px 0 rgba(0, 0, 0, 0.14),
+        0 1px 3px 0 rgba(0, 0, 0, 0.12);
+
+    /* layout */
+    --page-max-width: 960px;
+    --radius: 4px;
+}
+
+/**
+ * Proposal status chip. Duplicated verbatim in the list and detail views before this;
+ * both now use these classes.
+ */
+.status-chip {
+    display: inline-block;
+    padding: 4px 12px;
+    font-size: 12px;
+    font-weight: 500;
+    border-radius: 16px;
+    text-transform: capitalize;
+}
+
+.status-chip--draft {
+    background-color: var(--c-border);
+    color: var(--c-text);
+}
+
+.status-chip--under-review {
+    background-color: var(--c-warning);
+    color: var(--c-text);
+}
+
+.status-chip--accepted {
+    background-color: var(--c-success);
+    color: var(--c-on-primary);
+}
+
+.status-chip--rejected {
+    background-color: var(--c-danger);
+    color: var(--c-on-primary);
+}

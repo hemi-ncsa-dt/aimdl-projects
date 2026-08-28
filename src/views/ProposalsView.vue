@@ -115,7 +115,7 @@ function getStatusChipClass(status: ProjectStatus) {
     font-weight: 500;
     text-transform: uppercase;
     color: #fff;
-    background-color: #6200ee;
+    background-color: var(--c-primary);
     border: none;
     border-radius: 4px;
     cursor: pointer;
@@ -123,7 +123,7 @@ function getStatusChipClass(status: ProjectStatus) {
 }
 
 .create-button:hover {
-    background-color: #3700b3;
+    background-color: var(--c-primary-dark);
 }
 
 .proposals-list {
@@ -173,34 +173,6 @@ function getStatusChipClass(status: ProjectStatus) {
     text-overflow: ellipsis;
 }
 
-.status-chip {
-    display: inline-block;
-    padding: 4px 12px;
-    font-size: 12px;
-    font-weight: 500;
-    border-radius: 16px;
-    text-transform: capitalize;
-}
-
-.status-chip--draft {
-    background-color: #e0e0e0;
-    color: rgba(0, 0, 0, 0.87);
-}
-
-.status-chip--under-review {
-    background-color: #ffc107;
-    color: rgba(0, 0, 0, 0.87);
-}
-
-.status-chip--accepted {
-    background-color: #4caf50;
-    color: white;
-}
-
-.status-chip--rejected {
-    background-color: #f44336;
-    color: white;
-}
 
 .loading-indicator,
 .error-message {
@@ -210,6 +182,6 @@ function getStatusChipClass(status: ProjectStatus) {
 }
 
 .error-message {
-    color: #b00020;
+    color: var(--c-error);
 }
 </style>

@@ -33,8 +33,8 @@ const logout = () => {
     align-items: center;
     padding: 0 16px;
     height: 64px;
-    background-color: #f5f5f5;
-    border-bottom: 1px solid #e0e0e0;
+    background-color: var(--c-surface-muted);
+    border-bottom: 1px solid var(--c-border);
 }
 
 .app-bar__title {

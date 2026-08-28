@@ -61,14 +61,25 @@ function cancel() {
 </script>
 
 <template>
-    <div>
-        <h1>Edit Proposal</h1>
+    <div class="edit-container">
+        <h1 class="edit-title">Edit Proposal</h1>
         <ProjectForm :project="project" :is-new="false" :saving="saving" :submitting="submitting"
             v-model:error="formError" @save="save" @submit="submit" @cancel="cancel" />
     </div>
 </template>
 
 <style scoped>
+.edit-container {
+    max-width: var(--page-max-width);
+    margin: 0 auto;
+}
+
+.edit-title {
+    font-size: 24px;
+    font-weight: 400;
+    margin: 0 0 24px;
+}
+
 .proposal-container {
     display: flex;
     justify-content: center;
@@ -120,7 +131,7 @@ textarea {
 input:focus,
 textarea:focus {
     outline: none;
-    border-color: #6200ee;
+    border-color: var(--c-primary);
     border-width: 2px;
     padding: 9px;
 }
@@ -139,7 +150,7 @@ textarea {
     font-weight: 500;
     text-transform: uppercase;
     color: #fff;
-    background-color: #6200ee;
+    background-color: var(--c-primary);
     border: none;
     border-radius: 4px;
     cursor: pointer;
@@ -147,7 +158,7 @@ textarea {
 }
 
 .submit-button:hover {
-    background-color: #3700b3;
+    background-color: var(--c-primary-dark);
 }
 
 .submit-button:disabled {
@@ -157,7 +168,7 @@ textarea {
 }
 
 .error-message {
-    color: #b00020;
+    color: var(--c-error);
     margin-bottom: 16px;
 }
 
