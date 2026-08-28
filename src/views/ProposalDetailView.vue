@@ -23,6 +23,46 @@
             <p class="proposal-detail-description" v-html="renderMarkdown(project.description)"></p>
         </div>
 
+        <!-- Details Section -->
+        <div class="proposal-detail-card">
+            <h2 class="section-title">Project Details</h2>
+            <dl class="detail-grid">
+                <dt>Project Type</dt>
+                <dd>
+                    <template v-if="project.projectType">
+                        {{ projectTypeLabel(project.projectType) || project.projectType }}
+                        <div v-if="projectTypeDescription(project.projectType)" class="detail-hint">
+                            {{ projectTypeDescription(project.projectType) }}
+                        </div>
+                    </template>
+                    <span v-else class="detail-unset">Not specified</span>
+                </dd>
+
+                <dt>Access Category</dt>
+                <dd>
+                    <template v-if="project.priority">
+                        {{ priorityLabel(project.priority) || project.priority }}
+                    </template>
+                    <span v-else class="detail-unset">Not specified</span>
+                </dd>
+
+                <dt>Instruments</dt>
+                <dd>
+                    <div v-if="project.instruments && project.instruments.length > 0" class="instrument-list">
+                        <template v-for="instrument in project.instruments" :key="instrument.name">
+                            <a v-if="instrumentUrl(instrument.name)" :href="instrumentUrl(instrument.name)"
+                                target="_blank" rel="noopener noreferrer" class="instrument-chip instrument-chip--link"
+                                :title="instrumentDescription(instrument.name)">
+                                {{ instrument.name }}
+                            </a>
+                            <span v-else class="instrument-chip">{{ instrument.name }}</span>
+                        </template>
+                    </div>
+                    <span v-else class="detail-unset">None selected</span>
+                </dd>
+            </dl>
+        </div>
+
         <!-- Members Section -->
         <div class="proposal-detail-card">
             <h2 class="section-title">Team Members</h2>
@@ -85,6 +125,13 @@ import { useProjectStore } from '@/stores/project';
 import { storeToRefs } from 'pinia';
 import type { Project, ProjectStatus } from '@/types';
 import { getProject } from '@/services/api';
+import {
+    instrumentUrl,
+    instrumentDescription,
+    projectTypeLabel,
+    projectTypeDescription,
+    priorityLabel,
+} from '@/constants/project';
 import { useAuthStore } from '@/stores/auth';
 import { VIcon } from 'vuetify/components';
 
@@ -282,6 +329,65 @@ function getDownloadUrl(fileId: string): string {
 
 .error-message {
     color: #b00020;
+}
+
+/* Details Section */
+.detail-grid {
+    display: grid;
+    grid-template-columns: 180px 1fr;
+    gap: 12px 16px;
+    margin: 0;
+    align-items: baseline;
+}
+
+.detail-grid dt {
+    font-size: 13px;
+    font-weight: 500;
+    color: rgba(0, 0, 0, 0.6);
+}
+
+.detail-grid dd {
+    margin: 0;
+    font-size: 14px;
+    color: rgba(0, 0, 0, 0.87);
+}
+
+.detail-hint {
+    font-size: 12px;
+    color: rgba(0, 0, 0, 0.6);
+    margin-top: 2px;
+}
+
+.detail-unset {
+    font-size: 14px;
+    color: rgba(0, 0, 0, 0.38);
+    font-style: italic;
+}
+
+.instrument-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.instrument-chip {
+    display: inline-block;
+    padding: 3px 10px;
+    font-size: 12px;
+    font-weight: 500;
+    border-radius: 10px;
+    background-color: #e0e0e0;
+    color: rgba(0, 0, 0, 0.87);
+}
+
+.instrument-chip--link {
+    background-color: #ede7f6;
+    color: #6200ee;
+    text-decoration: none;
+}
+
+.instrument-chip--link:hover {
+    background-color: #d1c4e9;
 }
 
 /* Members Section */

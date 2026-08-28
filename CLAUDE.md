@@ -43,6 +43,7 @@ src/
   router/index.ts         4 routes: proposals, proposal-detail, proposal-edit, login
   plugins/vuetify.ts      Vuetify with all components/directives registered globally
   types/index.ts          every API interface & enum lives here
+  constants/project.ts    instrument / project-type / access-category options + labels
   services/api.ts         ALL fetch calls; no other file talks to the network
   stores/auth.ts          Girder token + current user
   stores/project.ts       project list / currentProject CRUD
@@ -92,11 +93,16 @@ override — it breaks in Docker unless the URL is also baked in at build time.
   Only `draft` proposals are editable/deletable in the UI.
 - Backend-derived fields never sent on create: `_id`, `owner`, `created`, `updated`,
   `submissionFolderId`, `projectId`. The `Omit<...>` in `createProject` encodes this.
+- **The backend fills in defaults the client never sent.** `POST /project` returns
+  `projectType: 'integrated'` and `priority: 0` even when both are omitted. So a "blank"
+  draft is never blank: the edit form shows *Integrated project* pre-selected, and
+  `priority: 0` is the falsy "unset" sentinel (there is no access category 0). Verified
+  against the live dev API, not inferred.
 - **ProjectMember** — freeform person (first/last/email/ORCID/role) with an optional
   `userId` linking to a real Girder `Person`. Roles: `PI`, `manager`, `user`.
 - **Instruments** — the three real AIMD-L stations are `MAXIMA`, `HELIX`, `SPHINX`; the
   form adds an `other` checkbox whose free text is stored as the instrument name.
-  `KNOWN_INSTRUMENTS` in `ProjectForm.vue` is what distinguishes them on load.
+  `KNOWN_INSTRUMENTS` in `constants/project.ts` is what distinguishes them on load.
 - **priority** — 1–6 "access category" (CAIMEE PI … external researcher).
 - **Girder primitives** — `Folder`, `Item`, `File`, `Group`, `Person` interfaces exist in
   `types/index.ts` (several are declared but not yet used). A project gets a collection
@@ -136,11 +142,29 @@ author-controlled, so treat any widening of the markdown feature set as a XSS qu
 - Path alias `@/` → `src/`.
 - Pinia stores are setup-style (`defineStore('name', () => {...})`).
 - All types/interfaces go in `src/types/index.ts`; all HTTP goes in `src/services/api.ts`.
+- Option lists shown in more than one place (instruments, project types, access
+  categories) and their display labels live in `src/constants/project.ts` — the form and
+  the detail view both read from there. Don't re-declare them in a component.
 - Stores own loading/error state; views read it via `storeToRefs`.
 - `.editorconfig` says 2-space indent, but **existing `src/` files use 4 spaces**. Match
   the file you're editing.
 - Styling is a mix: Vuetify components inside forms, hand-written scoped CSS with
   BEM-ish class names elsewhere (`.proposal-item__name`). `src/assets/*.css` are empty.
+
+## Local dev stack
+
+The whole stack (Girder, Mongo, Traefik) runs under Docker Swarm on the dev host as the
+`wt_*` services. The `wt_projects` service bind-mounts this working tree into a
+`node:22-bookworm` container running `npm run dev`, so **edits here are live immediately**
+at https://projects.local.xarthisius.xyz (Girder at https://girder.local.xarthisius.xyz).
+Both use a self-signed cert — pass `-k` / `ignoreHTTPSErrors`.
+
+To drive the real UI end-to-end, hit `/?girderToken=<token>`: the guard in `main.ts`
+picks the token out of the query string, so no OAuth round-trip is needed. Globus is the
+only configured provider and can't be automated. Self-registration on the dev Girder is
+open (`POST /api/v1/user` returns `authToken.token`), which is the easiest way to get a
+throwaway session — delete the user and its projects afterwards. An invalid token makes
+`GET /user/me` return `null` with HTTP 200, not a 401.
 
 ## Gotchas
 
@@ -151,8 +175,6 @@ author-controlled, so treat any widening of the markdown feature set as a XSS qu
   store writes or `useRoute()` into the form.
 - Deleting a proposal lives only on `ProposalDetailView` (drafts only). The form has no
   delete affordance.
-- **`ProposalDetailView.vue` doesn't render** `projectType`, `instruments`, or
-  `priority`, even though the form collects them.
 - `ProposalDetailView` bypasses `projectStore.fetchProject` and calls `getProject`
   directly while mutating the store's `loading`/`error` refs.
 - Vuetify is pinned to a **4.0.0-alpha** release; API breakage between alphas is likely.
