@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { ref, watch, computed } from 'vue';
+import { ref, watch, computed, onMounted, onBeforeUnmount } from 'vue';
+import { onBeforeRouteLeave } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 import { ProjectRole } from '@/types';
 import type { Project, ProjectMember, AutocompleteSuggestion, Person } from '@/types';
 import FileUploader from './FileUploader.vue';
 import MarkdownEditor from './MarkdownEditor.vue';
-import { VForm, VTextField, VBtn, VSelect, VIcon, VAutocomplete, VCombobox, VCheckbox } from 'vuetify/components';
+import { VForm, VTextField, VBtn, VSelect, VIcon, VCombobox, VCheckbox, VDialog, VCard, VCardTitle, VCardText, VCardActions, VSpacer } from 'vuetify/components';
 import { getOrcidSuggestions, searchUsers } from '@/services/api';
 import { KNOWN_INSTRUMENTS, instrumentOptions, projectTypeOptions, priorityOptions } from '@/constants/project';
 import { debounce } from 'lodash';
@@ -55,6 +56,10 @@ const orcidRule = [
     (v: string) => /^\d{4}-\d{4}-\d{4}-\d{3}[0-9X]{1}$/.test(v) || 'Invalid ORCID iD format',
 ];
 
+const nameRule = [
+    (v: string) => !!v?.trim() || 'Project name is required',
+];
+
 const emailRule = [
     (v: string) => !!v || 'E-mail is required',
     (v: string) => /.+@.+\..+/.test(v) || 'E-mail must be valid',
@@ -64,6 +69,30 @@ const roleOptions = Object.values(ProjectRole);
 
 const selectedInstruments = ref<string[]>([]);
 const otherInstrumentText = ref('');
+const formRef = ref<InstanceType<typeof VForm> | null>(null);
+
+// Snapshot of the project as it was seeded, for the unsaved-changes check (1.4).
+const baseline = ref('');
+
+// Promise-based confirm, shared by Submit (1.3) and the route guard (1.4).
+const confirmState = ref({
+    open: false,
+    title: '',
+    body: '',
+    confirmText: 'Confirm',
+    resolve: (() => { /* replaced per call */ }) as (ok: boolean) => void,
+});
+
+function confirm(title: string, body: string, confirmText: string): Promise<boolean> {
+    return new Promise((resolve) => {
+        confirmState.value = { open: true, title, body, confirmText, resolve };
+    });
+}
+
+function settleConfirm(ok: boolean) {
+    confirmState.value.open = false;
+    confirmState.value.resolve(ok);
+}
 
 const isBusy = computed(() => props.saving || props.submitting);
 
@@ -113,6 +142,9 @@ watch(() => props.project, (source) => {
         priority: source.priority || undefined,
     };
     initInstruments(source.instruments);
+    // Defer so the instruments watcher has rewritten form.instruments before we snapshot;
+    // otherwise the form reads as dirty the moment it loads.
+    queueMicrotask(() => { baseline.value = JSON.stringify(buildPayload()); });
 }, { immediate: true });
 
 const fetchSuggestions = async (member: ProjectMember) => {
@@ -226,11 +258,64 @@ const buildPayload = (): Partial<Project> => {
     };
 };
 
+const isDirty = computed(() => baseline.value !== '' && baseline.value !== JSON.stringify(buildPayload()));
+
+// While the parent is persisting it also navigates, and that navigation must not prompt.
+const isLeavingIntentionally = computed(() => props.saving || props.submitting);
+
+const LEAVE_TITLE = 'Discard unsaved changes?';
+const LEAVE_BODY = 'This proposal has edits that have not been saved. Leaving now discards them.';
+
+onBeforeRouteLeave(async () => {
+    if (!isDirty.value || isLeavingIntentionally.value) return true;
+    return await confirm(LEAVE_TITLE, LEAVE_BODY, 'Discard changes');
+});
+
+function onBeforeUnload(event: BeforeUnloadEvent) {
+    if (!isDirty.value || isLeavingIntentionally.value) return;
+    event.preventDefault();
+    event.returnValue = '';
+}
+
+onMounted(() => window.addEventListener('beforeunload', onBeforeUnload));
+onBeforeUnmount(() => window.removeEventListener('beforeunload', onBeforeUnload));
+
+/** Reveal the first field the rules rejected -- the form is taller than the viewport. */
+function focusFirstInvalid() {
+    const field = document.querySelector<HTMLElement>('.v-input--error input, .v-input--error textarea');
+    if (!field) return;
+    field.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    field.focus({ preventScroll: true });
+}
+
+// D1: drafts are working documents, so Save enforces nothing.
 const save = () => {
     emit('save', buildPayload());
 };
 
-const submitForReview = () => {
+// D1: the review gate is where the rules bite.
+const submitForReview = async () => {
+    if (singleInstrumentConflict.value) {
+        emit('update:error', 'Single-instrument project requires exactly one instrument selected.');
+        return;
+    }
+
+    const result = await formRef.value?.validate();
+    if (result && !result.valid) {
+        emit('update:error', 'Some required details are missing or invalid. They are highlighted below.');
+        focusFirstInvalid();
+        return;
+    }
+
+    const ok = await confirm(
+        'Submit this proposal for review?',
+        'Once submitted the proposal is locked and can no longer be edited or deleted. '
+        + 'Save it as a draft instead if you still need to make changes.',
+        'Submit for review',
+    );
+    if (!ok) return;
+
+    emit('update:error', null);
     emit('submit', buildPayload());
 };
 
@@ -240,12 +325,11 @@ const cancel = () => {
 </script>
 
 <template>
-    <v-form>
-        <v-text-field v-model="form.name" label="Project Name"></v-text-field>
+    <v-form ref="formRef">
+        <v-text-field v-model="form.name" label="Project Name" :rules="nameRule"></v-text-field>
 
         <v-select v-model="form.projectType" :items="projectTypeOptions" item-title="title" item-value="value"
-            label="Project Type" class="my-2" :error="singleInstrumentConflict"
-            :error-messages="singleInstrumentConflict ? 'Single-instrument project requires exactly one instrument' : undefined">
+            label="Project Type" class="my-2">
             <template #item="{ item, props: itemProps }">
                 <v-list-item v-bind="itemProps"
                     :subtitle="projectTypeOptions.find(o => o.value === item.value)?.description" />
@@ -290,9 +374,10 @@ const cancel = () => {
                 @update:search="onUserSearch" @update:model-value="(value: string) => onLastNameChange(value, member)">
             </v-combobox>
             <v-text-field v-model="member.email" label="Email" :rules="emailRule" class="mr-2"></v-text-field>
-            <v-autocomplete v-model="member.orcidId" :items="orcidSuggestions" item-title="text" item-value="text"
-                label="ORCID iD" :rules="orcidRule" class="mr-2" @focus="onOrcidFocus(member)" @blur="onOrcidBlur"
-                @update:modelValue="(value: string) => onOrcidSelect(value, member)"></v-autocomplete>
+            <v-combobox v-model="member.orcidId" :items="orcidSuggestions" item-title="text" item-value="text"
+                :return-object="false" label="ORCID iD" :rules="orcidRule" class="mr-2"
+                @focus="onOrcidFocus(member)" @blur="onOrcidBlur"
+                @update:modelValue="(value: string) => onOrcidSelect(value, member)"></v-combobox>
             <v-select v-model="member.role" :items="roleOptions" label="Role" class="mr-2"></v-select>
             <v-btn icon @click="removeMember(index)">
                 <v-icon>mdi-delete</v-icon>
@@ -319,5 +404,19 @@ const cancel = () => {
             </v-btn>
             <v-btn @click="cancel" class="ml-2" :disabled="isBusy">Cancel</v-btn>
         </div>
+
+        <v-dialog v-model="confirmState.open" max-width="480" persistent>
+            <v-card>
+                <v-card-title class="text-h6">{{ confirmState.title }}</v-card-title>
+                <v-card-text>{{ confirmState.body }}</v-card-text>
+                <v-card-actions>
+                    <v-spacer />
+                    <v-btn variant="text" @click="settleConfirm(false)">Keep editing</v-btn>
+                    <v-btn color="error" variant="flat" @click="settleConfirm(true)">
+                        {{ confirmState.confirmText }}
+                    </v-btn>
+                </v-card-actions>
+            </v-card>
+        </v-dialog>
     </v-form>
 </template>

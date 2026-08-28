@@ -1,6 +1,7 @@
 # Edit Proposal form — UX plan
 
-Fifteen findings from a review of `/proposal/:id/edit`, grouped into four phases.
+Sixteen findings from a review of `/proposal/:id/edit` (fifteen from the review, one
+uncovered while implementing Phase 1), grouped into four phases.
 Phase 1 stops the form from losing or accepting bad work; everything after that is
 layout and visual consistency.
 
@@ -73,6 +74,18 @@ form holds a local copy of the project, so there is nothing to recover afterward
 - **Files:** `src/components/ProjectForm.vue`, `src/views/ProposalEditView.vue`
 - **Risk:** medium — a dirty check that misfires is worse than none. The instruments
   watcher rewrites `form.instruments` on load, so compare normalised payloads, not raw refs.
+
+### 1.5 Let people type their ORCID — **Broken** *(found while implementing 1.1)*
+
+The ORCID field was a `v-autocomplete`, which only accepts values present in its
+suggestion list. Typing an ORCID and blurring left the field empty — verified. Harmless
+while the rules were decorative; a hard blocker the moment D1 makes ORCID required at
+submit, because anyone the lookup does not return could never submit at all.
+
+- **Change:** switch to `v-combobox` with `:return-object="false"`, matching the first and
+  last name fields. Suggestions still work and still rewrite the model to the bare ORCID.
+- **Files:** `src/components/ProjectForm.vue`
+- **Risk:** low. `VAutocomplete` is no longer imported anywhere.
 
 ---
 
