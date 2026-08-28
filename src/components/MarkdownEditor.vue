@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue';
-import { VTextarea, VTabs, VTab, VCard, VCardText } from 'vuetify/components';
+import { VTextarea, VTabs, VTab } from 'vuetify/components';
 import { renderMarkdown } from '@/utils/markdown';
 
 const props = defineProps<{
@@ -47,13 +47,13 @@ const insertMarkdown = (before: string, after: string = '') => {
 </script>
 
 <template>
-    <v-card>
-        <v-tabs v-model="tab" bg-color="primary">
+    <div class="markdown-editor">
+        <v-tabs v-model="tab" density="compact" :height="36">
             <v-tab>Edit</v-tab>
             <v-tab>Preview</v-tab>
         </v-tabs>
 
-        <v-card-text v-show="tab === 0">
+        <div v-show="tab === 0" class="markdown-editor__pane">
             <div class="toolbar mb-2">
                 <button type="button" @click.prevent="insertMarkdown('**', '**')" title="Bold" class="toolbar-btn">
                     <strong>B</strong>
@@ -63,20 +63,28 @@ const insertMarkdown = (before: string, after: string = '') => {
                 </button>
             </div>
 
-            <v-textarea v-model="localValue" :label="label" rows="10" auto-grow></v-textarea>
+            <v-textarea v-model="localValue" :label="label" rows="4" auto-grow></v-textarea>
 
             <div class="text-caption text-grey mt-1">
                 Formatting: **bold**, *italic*. Use Enter twice for new paragraphs.
             </div>
-        </v-card-text>
+        </div>
 
-        <v-card-text v-show="tab === 1">
+        <div v-show="tab === 1" class="markdown-editor__pane">
             <div class="preview-content" v-html="renderMarkdown(localValue)"></div>
-        </v-card-text>
-    </v-card>
+        </div>
+    </div>
 </template>
 
 <style scoped>
+.markdown-editor__pane {
+    padding-top: 12px;
+}
+
+.preview-content {
+    min-height: 96px;
+}
+
 .toolbar {
     display: flex;
     gap: 8px;
@@ -103,7 +111,6 @@ const insertMarkdown = (before: string, after: string = '') => {
 }
 
 .preview-content {
-    min-height: 200px;
     padding: 16px;
     background-color: var(--c-surface-sunk);
     border-radius: 4px;

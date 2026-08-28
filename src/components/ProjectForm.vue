@@ -328,7 +328,7 @@ const cancel = () => {
     <v-form ref="formRef">
         <section class="form-card">
             <h2 class="section-title">Overview</h2>
-            <v-text-field v-model="form.name" label="Project Name" :rules="nameRule"></v-text-field>
+            <v-text-field v-model="form.name" label="Project Name *" :rules="nameRule"></v-text-field>
 
         <v-select v-model="form.projectType" :items="projectTypeOptions" item-title="title" item-value="value"
             label="Project Type" class="my-2">
@@ -378,9 +378,9 @@ const cancel = () => {
                 <v-combobox v-model="member.lastName" :items="lastNameSuggestions" label="Last Name"
                     @update:search="onUserSearch" @update:model-value="(value: string) => onLastNameChange(value, member)">
                 </v-combobox>
-                <v-text-field v-model="member.email" label="Email" :rules="emailRule"></v-text-field>
+                <v-text-field v-model="member.email" label="Email *" :rules="emailRule"></v-text-field>
                 <v-combobox v-model="member.orcidId" :items="orcidSuggestions" item-title="text" item-value="text"
-                    :return-object="false" label="ORCID iD" :rules="orcidRule"
+                    :return-object="false" label="ORCID iD *" :rules="orcidRule"
                     @focus="onOrcidFocus(member)" @blur="onOrcidBlur"
                     @update:modelValue="(value: string) => onOrcidSelect(value, member)"></v-combobox>
                 <v-select v-model="member.role" :items="roleOptions" label="Role"></v-select>
@@ -393,6 +393,10 @@ const cancel = () => {
 
         <section class="form-card">
             <h2 class="section-title">Documents</h2>
+            <p class="section-hint">
+                Attach the proposal document and a CV for the PI. Choose a type for each file
+                after selecting it.
+            </p>
             <FileUploader v-if="form.submissionFolderId" v-model="form.files!" :folder-id="form.submissionFolderId" />
             <div v-else class="text-caption text-grey">
                 File uploads will be available after saving the project.
@@ -404,6 +408,9 @@ const cancel = () => {
                 @click:close="emit('update:error', null)">
                 {{ error }}
             </v-alert>
+            <p class="action-bar__hint">
+                Fields marked * are required to submit. Drafts save with anything.
+            </p>
             <div class="action-bar__buttons">
                 <v-btn @click="save" color="primary" :loading="saving" :disabled="submitting">
                     {{ isNew ? 'Create Draft' : 'Save Draft' }}
@@ -444,6 +451,12 @@ const cancel = () => {
 
 /* One treatment for every peer section (3.4) — Instruments, Team members and Documents
    previously used three different heading sizes. */
+.section-hint {
+    margin: -8px 0 16px;
+    font-size: 13px;
+    color: var(--c-text-muted);
+}
+
 .section-title {
     font-size: 20px;
     font-weight: 500;
@@ -486,6 +499,18 @@ const cancel = () => {
     margin-left: 4px;
 }
 
+/* The sticky bar overlays whatever is behind it, so anything scrolled to the very bottom
+   of the viewport would sit underneath it and swallow the click. Reserve room below the
+   last card, and keep scroll-into-view targets clear of the bar. */
+.form-card:last-of-type {
+    margin-bottom: 88px;
+}
+
+.v-form :deep(.v-input),
+.v-form :deep(.v-checkbox) {
+    scroll-margin-bottom: 110px;
+}
+
 /* Keep the actions reachable on a form taller than the viewport (2.3). */
 .action-bar {
     position: sticky;
@@ -496,6 +521,12 @@ const cancel = () => {
     border-top: 1px solid var(--c-border);
     border-radius: var(--radius);
     box-shadow: var(--shadow-card);
+}
+
+.action-bar__hint {
+    margin: 0 0 8px;
+    font-size: 12px;
+    color: var(--c-text-muted);
 }
 
 .action-bar__buttons {

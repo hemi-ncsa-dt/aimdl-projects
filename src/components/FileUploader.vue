@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
-import { VFileInput, VSelect, VBtn, VProgressLinear, VCard, VCardText, VIcon, VChip } from 'vuetify/components';
+import { VFileInput, VSelect, VBtn, VProgressLinear, VCard, VCardText, VIcon } from 'vuetify/components';
 import { FileType, type ProjectFile, type FileUploadResult } from '@/types';
 import { initiateUpload, uploadChunk, getFileDetails, deleteItem } from '@/services/api';
 import { useAuthStore } from '@/stores/auth';
@@ -237,7 +237,7 @@ const isUploading = computed(() => uploadingFiles.value.size > 0);
         <!-- Upload button -->
         <v-btn v-if="selectedFiles.length > 0" @click="uploadAllFiles" color="primary" :disabled="isUploading"
             :loading="isUploading">
-            Upload File
+            {{ selectedFiles.length === 1 ? 'Upload file' : `Upload ${selectedFiles.length} files` }}
         </v-btn>
     </div>
 </template>

@@ -130,7 +130,14 @@ alert is directly above them, so a failed save can report itself off-screen.
 - **Change:** pin the actions to the bottom of the viewport on a bordered bar, and surface
   the save error in the bar rather than only in the flow.
 - **Files:** `src/components/ProjectForm.vue`
-- **Risk:** low.
+- **Risk:** low — *but see below.*
+
+> **Found during implementation:** a sticky bar overlays whatever sits at the bottom of
+> the viewport, and `elementFromPoint` confirmed it was swallowing clicks meant for the
+> MAXIMA checkbox. Mitigated with `scroll-padding-bottom` on the document, so any
+> browser-initiated scroll — Tab through the form, `scrollIntoView`, anchor jumps — keeps
+> controls clear of the bar, plus reserved space below the last card. Worth knowing the
+> pattern has this hazard if the bar ever grows taller.
 
 ---
 

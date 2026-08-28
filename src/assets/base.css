@@ -43,6 +43,16 @@
 }
 
 /**
+ * The edit form pins its actions to a sticky bar, which overlays whatever sits at the
+ * bottom of the viewport. Reserve that space for any browser-initiated scroll -- focus
+ * moving through the form with Tab, scrollIntoView, anchor jumps -- so a control never
+ * lands underneath the bar where its clicks would be swallowed.
+ */
+html {
+    scroll-padding-bottom: 120px;
+}
+
+/**
  * Proposal status chip. Duplicated verbatim in the list and detail views before this;
  * both now use these classes.
  */

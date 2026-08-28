@@ -2,10 +2,12 @@
 import { ref, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useProjectStore } from '@/stores/project';
+import { storeToRefs } from 'pinia';
 import ProjectForm from '@/components/ProjectForm.vue';
 import type { Project } from '@/types';
 
 const projectStore = useProjectStore();
+const { loading } = storeToRefs(projectStore);
 const router = useRouter();
 const route = useRoute();
 
@@ -51,6 +53,10 @@ async function submit(projectData: Partial<Project>) {
     }
 }
 
+function statusChipClass(status: string) {
+    return `status-chip--${status.replace(' ', '-')}`;
+}
+
 function cancel() {
     if (project.value._id) {
         router.push({ name: 'proposal-detail', params: { id: project.value._id } });
@@ -62,9 +68,24 @@ function cancel() {
 
 <template>
     <div class="edit-container">
-        <h1 class="edit-title">Edit Proposal</h1>
-        <ProjectForm :project="project" :is-new="false" :saving="saving" :submitting="submitting"
-            v-model:error="formError" @save="save" @submit="submit" @cancel="cancel" />
+        <div v-if="loading && !project._id" class="loading-indicator">Loading…</div>
+        <template v-else>
+            <header class="edit-header">
+                <button class="back-button" @click="cancel">&larr; Back to proposal</button>
+                <div class="edit-header__row">
+                    <h1 class="edit-title">
+                        <span v-if="project.projectId" class="edit-title__id">{{ project.projectId }}</span>
+                        {{ project.name || 'Untitled proposal' }}
+                    </h1>
+                    <span v-if="project.status" class="status-chip" :class="statusChipClass(project.status)">
+                        {{ project.status }}
+                    </span>
+                </div>
+                <p class="edit-subtitle">Editing this proposal</p>
+            </header>
+            <ProjectForm :project="project" :is-new="false" :saving="saving" :submitting="submitting"
+                v-model:error="formError" @save="save" @submit="submit" @cancel="cancel" />
+        </template>
     </div>
 </template>
 
@@ -74,10 +95,48 @@ function cancel() {
     margin: 0 auto;
 }
 
+.edit-header {
+    margin-bottom: 24px;
+}
+
+.back-button {
+    background: none;
+    border: none;
+    padding: 0;
+    color: var(--c-primary);
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.edit-header__row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-top: 12px;
+}
+
 .edit-title {
     font-size: 24px;
     font-weight: 400;
-    margin: 0 0 24px;
+    margin: 0;
+}
+
+.edit-title__id {
+    color: var(--c-text-muted);
+}
+
+.edit-subtitle {
+    margin: 4px 0 0;
+    font-size: 13px;
+    color: var(--c-text-muted);
+}
+
+.loading-indicator {
+    text-align: center;
+    padding: 48px;
+    font-size: 16px;
 }
 
 .proposal-container {
