@@ -1,48 +1,66 @@
-# .
+# AIMD-L Project Proposal Manager
 
-This template should help get you started developing with Vue 3 in Vite.
+Frontend for submitting and tracking project proposals for **AIMD-L** (Automated
+Materials Design Lab), part of CAIMEE / HEMI at Johns Hopkins University.
 
-## Recommended IDE Setup
+Researchers draft a proposal, describe the work, list team members and the instruments
+they need, attach supporting documents, and submit it for review. Each proposal becomes
+a project with its own DOI, Girder collection and user group.
 
-[VS Code](https://code.visualstudio.com/) + [Vue (Official)](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur).
+This is a single-page app only. It talks to a separate [Girder](https://girder.readthedocs.io/)
+backend (Python/MongoDB) over REST; there is no server code in this repository.
 
-## Recommended Browser Setup
+## Stack
 
-- Chromium-based browsers (Chrome, Edge, Brave, etc.):
-  - [Vue.js devtools](https://chromewebstore.google.com/detail/vuejs-devtools/nhdogjmejiglipccpnnnanhbledajbpd)
-  - [Turn on Custom Object Formatter in Chrome DevTools](http://bit.ly/object-formatters)
-- Firefox:
-  - [Vue.js devtools](https://addons.mozilla.org/en-US/firefox/addon/vue-js-devtools/)
-  - [Turn on Custom Object Formatter in Firefox DevTools](https://fxdx.dev/firefox-devtools-custom-object-formatters/)
+Vue 3 (`<script setup>`) · TypeScript · Vite · vue-router · Pinia · Vuetify
 
-## Type Support for `.vue` Imports in TS
-
-TypeScript cannot handle type information for `.vue` imports by default, so we replace the `tsc` CLI with `vue-tsc` for type checking. In editors, we need [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) to make the TypeScript language service aware of `.vue` types.
-
-## Customize configuration
-
-See [Vite Configuration Reference](https://vite.dev/config/).
-
-## Project Setup
+## Setup
 
 ```sh
 npm install
-```
-
-### Compile and Hot-Reload for Development
-
-```sh
 npm run dev
 ```
 
-### Type-Check, Compile and Minify for Production
+Point the app at a backend with `VITE_API_BASE_URL` in `.env.local`:
 
 ```sh
-npm run build
+VITE_API_BASE_URL=https://girder.example.org/api/v1
 ```
 
-### Lint with [ESLint](https://eslint.org/)
+Sign-in goes through the Girder instance's configured OAuth provider, so the backend
+must be reachable for the app to get past the login screen.
+
+## Scripts
+
+| Command | Description |
+| --- | --- |
+| `npm run dev` | Vite dev server with hot reload |
+| `npm run build` | Type-check, then build to `dist/` |
+| `npm run type-check` | `vue-tsc` only |
+| `npm run lint` | ESLint with `--fix` |
+| `npm run preview` | Serve the production build locally |
+
+Requires Node `^20.19.0 || >=22.12.0`. There is no test suite.
+
+## Deployment
+
+The image serves the built app from nginx and is configured **at container start**, not
+at build time: `99-vite-envsubst.sh` writes `/env-config.js` from the container's
+environment, so one image can be pointed at any backend.
 
 ```sh
-npm run lint
+docker build -t aimdl-proposal-manager .
+docker run -p 8080:8080 -e VITE_API_BASE_URL=https://girder.example.org/api/v1 aimdl-proposal-manager
 ```
+
+See [DOCKER.md](DOCKER.md) for details.
+
+## Documentation
+
+- [DOCKER.md](DOCKER.md) — building, running and configuring the container
+- [MARKDOWN_SUPPORT.md](MARKDOWN_SUPPORT.md) — the markdown subset allowed in descriptions
+- [CLAUDE.md](CLAUDE.md) — architecture notes and conventions for working in this repo
+
+## License
+
+MIT — see [LICENSE](LICENSE).
