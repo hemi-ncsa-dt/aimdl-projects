@@ -50,7 +50,6 @@ export async function getProject(id: string, token: string): Promise<Project> {
 }
 
 export async function createProject(projectData: Omit<Project, '_id' | 'owner' | 'created' | 'updated' | 'submissionFolderId' | 'projectId'>, token: string): Promise<Project> {
-    console.log('Creating project with data:', projectData);
     const response = await fetch(`${API_BASE_URL}/project`, {
         method: 'POST',
         headers: {
@@ -63,7 +62,6 @@ export async function createProject(projectData: Omit<Project, '_id' | 'owner' |
 }
 
 export async function updateProject(id: string, projectData: Partial<Omit<Project, 'projectId'>>, token: string): Promise<Project> {
-    console.log('Updating project with data:', JSON.stringify(projectData, null, 2));
     const response = await fetch(`${API_BASE_URL}/project/${id}`, {
         method: 'PUT',
         headers: {
