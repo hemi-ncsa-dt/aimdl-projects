@@ -60,6 +60,7 @@ See [DOCKER.md](DOCKER.md) for details.
 - [DOCKER.md](DOCKER.md) — building, running and configuring the container
 - [MARKDOWN_SUPPORT.md](MARKDOWN_SUPPORT.md) — the markdown subset allowed in descriptions
 - [CLAUDE.md](CLAUDE.md) — architecture notes and conventions for working in this repo
+- [UX_PLAN.md](UX_PLAN.md) — phased plan for fixing the Edit Proposal form
 
 ## License
 
