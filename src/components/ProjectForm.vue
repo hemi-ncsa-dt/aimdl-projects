@@ -1,22 +1,39 @@
 <script setup lang="ts">
-import { ref, onMounted, watch, computed } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
-import { useProjectStore } from '@/stores/project';
+import { ref, watch, computed } from 'vue';
 import { useAuthStore } from '@/stores/auth';
 import { ProjectRole } from '@/types';
-import type { Project, ProjectMember, AutocompleteSuggestion, Person, ProjectFile } from '@/types';
+import type { Project, ProjectMember, AutocompleteSuggestion, Person } from '@/types';
 import FileUploader from './FileUploader.vue';
 import MarkdownEditor from './MarkdownEditor.vue';
-import { VForm, VTextField, VTextarea, VBtn, VSelect, VIcon, VAutocomplete, VCombobox, VCheckbox } from 'vuetify/components';
+import { VForm, VTextField, VBtn, VSelect, VIcon, VAutocomplete, VCombobox, VCheckbox } from 'vuetify/components';
 import { getOrcidSuggestions, searchUsers } from '@/services/api';
 import { debounce } from 'lodash';
 
-const projectStore = useProjectStore();
-const authStore = useAuthStore();
-const router = useRouter();
-const route = useRoute();
+const props = withDefaults(defineProps<{
+    project: Partial<Project>;
+    isNew?: boolean;
+    saving?: boolean;
+    submitting?: boolean;
+    error?: string | null;
+}>(), {
+    isNew: false,
+    saving: false,
+    submitting: false,
+    error: null,
+});
 
-const project = ref<Partial<Project> & { members: ProjectMember[] }>({
+const emit = defineEmits<{
+    save: [project: Partial<Project>];
+    submit: [project: Partial<Project>];
+    cancel: [];
+    'update:error': [value: string | null];
+}>();
+
+const authStore = useAuthStore();
+
+// Local, editable copy of the project. The parent owns persistence; this component
+// only collects input and emits the payload.
+const form = ref<Partial<Project> & { members: ProjectMember[] }>({
     name: '',
     description: '',
     status: 'draft',
@@ -28,7 +45,6 @@ const project = ref<Partial<Project> & { members: ProjectMember[] }>({
     priority: undefined,
 });
 
-const isNew = ref(true);
 const orcidSuggestions = ref<AutocompleteSuggestion[]>([]);
 const userSuggestions = ref<Person[]>([]);
 const suggestionWatcher = ref<(() => void) | null>(null);
@@ -110,12 +126,11 @@ const priorityOptions = [
 
 const selectedInstruments = ref<string[]>([]);
 const otherInstrumentText = ref('');
-const isSaving = ref(false);
-const isSubmitting = ref(false);
-const formError = ref<string | null>(null);
+
+const isBusy = computed(() => props.saving || props.submitting);
 
 const singleInstrumentConflict = computed(() =>
-    project.value.projectType === 'singleInstrument' && selectedInstruments.value.length > 1
+    form.value.projectType === 'singleInstrument' && selectedInstruments.value.length > 1
 );
 
 const initInstruments = (instruments: { name: string }[] | undefined) => {
@@ -129,42 +144,38 @@ const initInstruments = (instruments: { name: string }[] | undefined) => {
     const unknown = names.find(n => !KNOWN_INSTRUMENTS.includes(n));
     const hasOther = !!unknown;
     selectedInstruments.value = hasOther ? [...known, 'other'] : [...known];
-    if (unknown) {
-        otherInstrumentText.value = unknown;
-    }
+    otherInstrumentText.value = unknown || '';
 };
 
 watch([selectedInstruments, otherInstrumentText], () => {
-    project.value.instruments = selectedInstruments.value.map(i => ({
+    form.value.instruments = selectedInstruments.value.map(i => ({
         name: i === 'other' ? (otherInstrumentText.value.trim() || 'other') : i,
     }));
 });
 
-onMounted(async () => {
-    await authStore.fetchUser();
-    const id = route.params.id as string;
-    if (id) {
-        isNew.value = false;
-        await projectStore.fetchProject(id);
-        if (projectStore.currentProject) {
-            const members = projectStore.currentProject.members || [];
-            project.value = {
-                ...projectStore.currentProject,
-                members: members.map(m => ({
-                    firstName: m.firstName,
-                    lastName: m.lastName,
-                    email: m.email,
-                    orcidId: m.orcidId || '',
-                    role: m.role,
-                    userId: m.userId || null,
-                })),
-                files: projectStore.currentProject.files || [],
-                priority: projectStore.currentProject.priority || undefined,
-            };
-            initInstruments(projectStore.currentProject.instruments);
-        }
-    }
-});
+// The parent loads the project asynchronously, so re-seed the form whenever it arrives.
+watch(() => props.project, (source) => {
+    form.value = {
+        ...source,
+        name: source.name || '',
+        description: source.description || '',
+        status: source.status || 'draft',
+        members: (source.members || []).map(m => ({
+            firstName: m.firstName,
+            lastName: m.lastName,
+            email: m.email,
+            orcidId: m.orcidId || '',
+            role: m.role,
+            userId: m.userId || null,
+        })),
+        samples: source.samples || [],
+        files: source.files || [],
+        projectType: source.projectType,
+        instruments: source.instruments || [],
+        priority: source.priority || undefined,
+    };
+    initInstruments(source.instruments);
+}, { immediate: true });
 
 const fetchSuggestions = async (member: ProjectMember) => {
     if (member.firstName && member.lastName && authStore.token) {
@@ -213,7 +224,6 @@ const lastNameSuggestions = computed(() =>
 const debouncedSearch = debounce(async (query: string) => {
     if (query && authStore.token) {
         userSuggestions.value = await searchUsers(query, authStore.token);
-        console.log('User suggestions:', userSuggestions.value);
     }
 }, 300);
 
@@ -249,7 +259,7 @@ const onLastNameChange = (value: string, member: ProjectMember) => {
 };
 
 const addMember = () => {
-    project.value.members.push({
+    form.value.members.push({
         firstName: '',
         lastName: '',
         email: '',
@@ -260,68 +270,42 @@ const addMember = () => {
 };
 
 const removeMember = (index: number) => {
-    project.value.members.splice(index, 1);
+    form.value.members.splice(index, 1);
 };
 
-const save = async () => {
-    formError.value = null;
-    isSaving.value = true;
-    try {
-        if (isNew.value) {
-            const { name, description, status, members, samples, files, projectType, instruments, priority } = project.value;
-            await projectStore.createProject({
-                name: name || '',
-                description: description || '',
-                status: status || 'draft',
-                members: members || [],
-                samples: samples || [],
-                files: files || [],
-                projectType,
-                instruments: instruments || [],
-                priority,
-            });
-        } else {
-            const { name, description, status, members, samples, files, projectType, instruments, priority } = project.value;
-            await projectStore.updateProject(project.value._id!, { name, description, status, members, samples, files, projectType, instruments, priority });
-        }
-        router.push(`/proposal/${projectStore.currentProject?._id}`);
-    } catch (e: any) {
-        formError.value = e.message || 'An unexpected error occurred. Please try again.';
-    } finally {
-        isSaving.value = false;
-    }
+const buildPayload = (): Partial<Project> => {
+    const { name, description, status, members, samples, files, projectType, instruments, priority } = form.value;
+    return {
+        name: name || '',
+        description: description || '',
+        status: status || 'draft',
+        members: members || [],
+        samples: samples || [],
+        files: files || [],
+        projectType,
+        instruments: instruments || [],
+        priority,
+    };
 };
 
-const submitForReview = async () => {
-    formError.value = null;
-    isSubmitting.value = true;
-    try {
-        project.value.status = 'under review';
-        const { name, description, status, members, samples, files, projectType, instruments, priority } = project.value;
-        await projectStore.updateProject(project.value._id!, { name, description, status, members, samples, files, projectType, instruments, priority });
-        router.push('/proposals');
-    } catch (e: any) {
-        project.value.status = 'draft';
-        formError.value = e.message || 'An unexpected error occurred. Please try again.';
-    } finally {
-        isSubmitting.value = false;
-    }
+const save = () => {
+    emit('save', buildPayload());
+};
+
+const submitForReview = () => {
+    emit('submit', buildPayload());
 };
 
 const cancel = () => {
-    if (project.value._id) {
-        router.push(`/proposal/${project.value._id}`);
-    } else {
-        router.push('/proposals');
-    }
+    emit('cancel');
 };
 </script>
 
 <template>
     <v-form>
-        <v-text-field v-model="project.name" label="Project Name"></v-text-field>
+        <v-text-field v-model="form.name" label="Project Name"></v-text-field>
 
-        <v-select v-model="project.projectType" :items="projectTypeOptions" item-title="title" item-value="value"
+        <v-select v-model="form.projectType" :items="projectTypeOptions" item-title="title" item-value="value"
             label="Project Type" class="my-2" :error="singleInstrumentConflict"
             :error-messages="singleInstrumentConflict ? 'Single-instrument project requires exactly one instrument' : undefined">
             <template #item="{ item, props: itemProps }">
@@ -354,13 +338,13 @@ const cancel = () => {
             </div>
         </div>
 
-        <v-select v-model="project.priority" :items="priorityOptions" item-title="title" item-value="value"
+        <v-select v-model="form.priority" :items="priorityOptions" item-title="title" item-value="value"
             label="Access Category" placeholder="Select access category" class="my-2" />
 
-        <MarkdownEditor v-model="project.description" label="Public Overview" class="my-4" />
+        <MarkdownEditor v-model="form.description" label="Public Overview" class="my-4" />
 
         <h2>Members</h2>
-        <div v-for="(member, index) in project.members" :key="index" class="d-flex align-center my-2">
+        <div v-for="(member, index) in form.members" :key="index" class="d-flex align-center my-2">
             <v-combobox v-model="member.firstName" :items="firstNameSuggestions" label="First Name" class="mr-2"
                 @update:search="onUserSearch" @update:model-value="(value: string) => onFirstNameChange(value, member)">
             </v-combobox>
@@ -378,22 +362,24 @@ const cancel = () => {
         </div>
         <v-btn @click="addMember" class="my-2">Add Member</v-btn>
 
-        <FileUploader v-if="project.submissionFolderId" v-model="project.files!"
-            :folder-id="project.submissionFolderId" />
+        <FileUploader v-if="form.submissionFolderId" v-model="form.files!" :folder-id="form.submissionFolderId" />
         <div v-else class="my-4 text-caption text-grey">
             File uploads will be available after saving the project.
         </div>
 
-        <v-alert v-if="formError" type="error" variant="tonal" class="mt-4" closable @click:close="formError = null">
-            {{ formError }}
+        <v-alert v-if="error" type="error" variant="tonal" class="mt-4" closable
+            @click:close="emit('update:error', null)">
+            {{ error }}
         </v-alert>
 
         <div class="mt-4">
-            <v-btn @click="save" color="primary" :loading="isSaving" :disabled="isSubmitting">Save Draft</v-btn>
-            <v-btn @click="submitForReview" color="secondary" class="ml-2" :loading="isSubmitting"
-                :disabled="isSaving">Submit
-                for Review</v-btn>
-            <v-btn @click="cancel" class="ml-2" :disabled="isSaving || isSubmitting">Cancel</v-btn>
+            <v-btn @click="save" color="primary" :loading="saving" :disabled="submitting">
+                {{ isNew ? 'Create Draft' : 'Save Draft' }}
+            </v-btn>
+            <v-btn @click="submitForReview" color="secondary" class="ml-2" :loading="submitting" :disabled="saving">
+                Submit for Review
+            </v-btn>
+            <v-btn @click="cancel" class="ml-2" :disabled="isBusy">Cancel</v-btn>
         </div>
     </v-form>
 </template>
