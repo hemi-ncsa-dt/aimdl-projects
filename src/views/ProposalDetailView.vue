@@ -125,6 +125,7 @@ import { useProjectStore } from '@/stores/project';
 import { storeToRefs } from 'pinia';
 import type { ProjectStatus } from '@/types';
 import { getFileDownloadUrl } from '@/services/api';
+import { renderMarkdown } from '@/utils/markdown';
 import {
     instrumentUrl,
     instrumentDescription,
@@ -169,25 +170,6 @@ async function deleteProject() {
 
 function getInitials(firstName: string, lastName: string): string {
     return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
-}
-
-// Simple markdown to HTML conversion
-function renderMarkdown(markdown: string): string {
-    if (!markdown) return '';
-
-    let html = markdown
-        // Bold: **text** or __text__
-        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-        .replace(/__(.+?)__/g, '<strong>$1</strong>')
-        // Italic: *text* or _text_
-        .replace(/\*(.+?)\*/g, '<em>$1</em>')
-        .replace(/_(.+?)_/g, '<em>$1</em>')
-        // Line breaks: double line break for paragraphs
-        .replace(/\n\n/g, '</p><p>')
-        // Single line breaks
-        .replace(/\n/g, '<br>');
-
-    return `<p>${html}</p>`;
 }
 
 function formatFileSize(size: number | undefined): string {

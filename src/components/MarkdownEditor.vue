@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue';
 import { VTextarea, VTabs, VTab, VCard, VCardText } from 'vuetify/components';
+import { renderMarkdown } from '@/utils/markdown';
 
 const props = defineProps<{
     modelValue: string | undefined;
@@ -21,25 +22,6 @@ watch(() => props.modelValue, (newValue) => {
 watch(localValue, (newValue) => {
     emit('update:modelValue', newValue);
 });
-
-// Simple markdown to HTML conversion
-const renderMarkdown = (markdown: string): string => {
-    if (!markdown) return '';
-
-    let html = markdown
-        // Bold: **text** or __text__
-        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-        .replace(/__(.+?)__/g, '<strong>$1</strong>')
-        // Italic: *text* or _text_
-        .replace(/\*(.+?)\*/g, '<em>$1</em>')
-        .replace(/_(.+?)_/g, '<em>$1</em>')
-        // Line breaks: double line break for paragraphs
-        .replace(/\n\n/g, '</p><p>')
-        // Single line breaks
-        .replace(/\n/g, '<br>');
-
-    return `<p>${html}</p>`;
-};
 
 const insertMarkdown = (before: string, after: string = '') => {
     const textarea = document.querySelector('textarea') as HTMLTextAreaElement;

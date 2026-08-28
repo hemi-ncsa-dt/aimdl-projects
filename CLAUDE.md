@@ -43,6 +43,7 @@ src/
   router/index.ts         4 routes: proposals, proposal-detail, proposal-edit, login
   plugins/vuetify.ts      Vuetify with all components/directives registered globally
   types/index.ts          every API interface & enum lives here
+  utils/markdown.ts       the only markdown renderer (escapes before rendering)
   constants/project.ts    instrument / project-type / access-category options + labels
   services/api.ts         ALL fetch calls; no other file talks to the network
   stores/auth.ts          Girder token + current user
@@ -128,13 +129,15 @@ been created server-side.
 ## Markdown
 
 Descriptions are stored as plain markdown text (never HTML) so MongoDB storage stays
-trivial. Rendering is a small regex chain duplicated in **three** places:
-`MarkdownEditor.vue` (`renderMarkdown`), `ProposalDetailView.vue` (`renderMarkdown`),
-and `ProposalsView.vue` (`stripMarkdown`, for the truncated list view). Only bold,
-italic, and line breaks are supported. Change one, change all three.
+trivial. `src/utils/markdown.ts` is the single implementation: `renderMarkdown()` for
+the two `v-html` sinks (detail view, editor preview) and `stripMarkdown()` for the
+truncated list view. Only bold, italic, and line breaks are supported.
 
-The rendered HTML goes through `v-html`. It is *not* sanitized — description text is
-author-controlled, so treat any widening of the markdown feature set as a XSS question.
+`renderMarkdown()` HTML-escapes the source **before** applying the substitutions,
+because its output goes straight into `v-html`. This is load-bearing: descriptions are
+author-controlled, and before the escape was added a stored description could execute
+arbitrary JavaScript in any viewer's browser. Keep the escape first if you extend it,
+or switch to a real sanitizer.
 
 ## Conventions
 

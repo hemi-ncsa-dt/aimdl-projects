@@ -4,8 +4,9 @@ import { useRouter } from 'vue-router';
 import { useProjectStore } from '@/stores/project';
 import { useAuthStore } from '@/stores/auth';
 import { storeToRefs } from 'pinia';
-import type { Project, ProjectStatus, ProjectMember } from '@/types';
+import type { ProjectStatus, ProjectMember } from '@/types';
 import { ProjectRole } from '@/types';
+import { stripMarkdown } from '@/utils/markdown';
 
 const router = useRouter();
 const projectStore = useProjectStore();
@@ -50,23 +51,6 @@ function getStatusChipClass(status: ProjectStatus) {
     return `status-chip--${status.replace(' ', '-')}`;
 }
 
-// Simple markdown to HTML conversion (strip formatting for list view)
-function stripMarkdown(markdown: string): string {
-    if (!markdown) return '';
-
-    return markdown
-        // Remove bold
-        .replace(/\*\*(.+?)\*\*/g, '$1')
-        .replace(/__(.+?)__/g, '$1')
-        // Remove italic
-        .replace(/\*(.+?)\*/g, '$1')
-        .replace(/_(.+?)_/g, '$1')
-        // Replace line breaks with spaces
-        .replace(/\n/g, ' ')
-        // Collapse multiple spaces
-        .replace(/\s+/g, ' ')
-        .trim();
-}
 </script>
 
 <template>
