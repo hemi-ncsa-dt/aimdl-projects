@@ -7,6 +7,7 @@ import FileUploader from './FileUploader.vue';
 import MarkdownEditor from './MarkdownEditor.vue';
 import { VForm, VTextField, VBtn, VSelect, VIcon, VAutocomplete, VCombobox, VCheckbox } from 'vuetify/components';
 import { getOrcidSuggestions, searchUsers } from '@/services/api';
+import { KNOWN_INSTRUMENTS, instrumentOptions, projectTypeOptions, priorityOptions } from '@/constants/project';
 import { debounce } from 'lodash';
 
 const props = withDefaults(defineProps<{
@@ -60,69 +61,6 @@ const emailRule = [
 ];
 
 const roleOptions = Object.values(ProjectRole);
-
-const KNOWN_INSTRUMENTS = ['MAXIMA', 'HELIX', 'SPHINX'];
-
-interface InstrumentOption {
-    value: string;
-    label: string;
-    description: string;
-    url: string;
-}
-
-const instrumentOptions: InstrumentOption[] = [
-    {
-        value: 'MAXIMA',
-        label: 'MAXIMA',
-        description: 'Multimodal Automated X-ray Investigation of Materials',
-        url: 'https://hemi.jhu.edu/caimee/center-facilities/aimd-l/#1745259387828-044ce224-dc05',
-    },
-    {
-        value: 'HELIX',
-        label: 'HELIX',
-        description: 'High-throughput Extreme Laser Impact eXperiments',
-        url: 'https://hemi.jhu.edu/caimee/center-facilities/aimd-l/#1745356027264-0fcae1de-66a4',
-    },
-    {
-        value: 'SPHINX',
-        label: 'SPHINX',
-        description: 'Scanning Probe for High-resolution INdentation eXperiments',
-        url: 'https://hemi.jhu.edu/caimee/center-facilities/aimd-l/#1745438879173-208b1f97-0fd2',
-    },
-    {
-        value: 'other',
-        label: 'Other',
-        description: '',
-        url: '',
-    },
-];
-
-const projectTypeOptions = [
-    {
-        value: 'integrated',
-        title: 'Integrated project',
-        description: 'Experiments using AIMD-L as an integrated facility involving two or more experimental stations',
-    },
-    {
-        value: 'singleInstrument',
-        title: 'Single-instrument project',
-        description: 'Usage of one or more instruments in a stand-alone manner',
-    },
-    {
-        value: 'development',
-        title: 'Development project',
-        description: 'Work to develop the capabilities of AIMD-L, either as an integrated facility or of its individual stations',
-    },
-];
-
-const priorityOptions = [
-    { value: 1, title: 'CAIMEE principal investigator (or collaborator)' },
-    { value: 2, title: 'Researcher from primary partner institution' },
-    { value: 3, title: 'HEMI fellow' },
-    { value: 4, title: 'WSE faculty' },
-    { value: 5, title: 'Other JHU faculty' },
-    { value: 6, title: 'External researcher' },
-];
 
 const selectedInstruments = ref<string[]>([]);
 const otherInstrumentText = ref('');
