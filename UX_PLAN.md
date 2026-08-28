@@ -9,8 +9,9 @@ layout and visual consistency.
 **Components:** `ProjectForm.vue`, `FileUploader.vue`, `MarkdownEditor.vue`
 **Evidence:** every finding below was checked against the local dev stack, not inferred
 from reading the code.
-**Status:** decisions D1–D3 settled 2026-08-28; implementation in progress, one commit
-per phase.
+**Status:** complete. Decisions D1–D3 settled 2026-08-28; all four phases implemented,
+one commit per phase, verified against the dev stack (93 assertions across seven
+Playwright suites).
 
 ## Severity
 
