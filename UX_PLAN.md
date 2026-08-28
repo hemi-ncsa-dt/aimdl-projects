@@ -8,6 +8,8 @@ layout and visual consistency.
 **Components:** `ProjectForm.vue`, `FileUploader.vue`, `MarkdownEditor.vue`
 **Evidence:** every finding below was checked against the local dev stack, not inferred
 from reading the code.
+**Status:** decisions D1–D3 settled 2026-08-28; implementation in progress, one commit
+per phase.
 
 ## Severity
 
@@ -74,22 +76,24 @@ form holds a local copy of the project, so there is nothing to recover afterward
 
 ---
 
-## Phase 2 — Make it usable at every width
+## Phase 2 — Make the form layout hold together
 
 The member editor is the only genuinely unusable part of the page. It needs a layout
 change rather than a style tweak, which is why it sits apart from the visual work in
-Phase 3.
+Phase 3. Scope is bounded by **D2** — the laptop floor, not phones.
 
-### 2.1 Rebuild the member rows — **Broken**
+### 2.1 Realign the member rows — **Broken**
 
 Each member is a `d-flex` with no wrap holding five fields and a delete button, so the
 fields compress without limit. At 390 px the labels render as "L.", "E", "a"; even at
 tablet width the email truncates. Rows are also independent flex containers, so columns
 don't line up between rows.
 
-- **Change:** one member per card, fields on a responsive grid — name pair, then email,
-  ORCID, role — collapsing to a single column on narrow screens. A shared grid template
-  fixes the row-to-row misalignment for free. Move delete to the card header.
+- **Change** (scoped by **D2**): move the rows onto one shared CSS grid template so every
+  row's columns align, and give each column a minimum width so fields stop collapsing into
+  unreadable slivers. Wraps to two rows of fields below the laptop floor rather than
+  compressing. A per-member card with single-column stacking was considered and dropped
+  with D2 — revisit if phones ever come into scope.
 - **Files:** `src/components/ProjectForm.vue`
 - **Risk:** medium — the ORCID autocomplete's focus/blur watcher is bound per member and
   must survive the restructure. Covered by the existing round-trip test.
@@ -231,16 +235,20 @@ The current rules mark ORCID and email required on every member, yet a new propo
 auto-adds the signed-in user as PI with an empty ORCID. Enforce those rules on Save and
 nobody can save a draft.
 
-> **Recommendation:** two tiers — Save Draft accepts anything, Submit for Review enforces
-> in full. Drafts are working documents; the review gate is the right place to be strict.
+**Decided: two tiers.** Save Draft accepts anything incomplete; Submit for Review
+enforces every rule. Drafts are working documents; the review gate is where strictness
+belongs. Rules stay bound to the fields so errors still surface while typing — they are
+simply not enforced until submit.
 
 ### D2 — Which widths are actually supported?
 
 Phase 2.1 is a rebuild if phones matter and a much smaller change if the floor is a
 laptop. Nothing in the repo states a target.
 
-> **Recommendation:** treat tablet as the floor unless you know researchers submit from
-> phones — but fix the member grid regardless, since it is cramped at 1024 px too.
+**Decided: laptop floor, 1024 px and up.** Phones are out of scope. Item 2.1 is therefore
+an alignment and minimum-width fix rather than a rebuild: rows share one grid template so
+columns line up, and fields stop collapsing below a usable width. The page will still be
+cramped on a phone, and that is accepted.
 
 ### D3 — Should Delete live on the edit page?
 
@@ -248,8 +256,8 @@ Deleting a draft is only possible from the detail view. The edit page has no del
 affordance, which is why the parent's old `@delete` handler was unreachable and got
 removed.
 
-> **Recommendation:** leave it on the detail view. One destructive action per surface, and
-> the edit page is about to gain a confirm dialog for Submit already.
+**Decided: detail view only.** No delete affordance on the edit page, and the removed
+`@delete` emit stays removed.
 
 ---
 
@@ -263,7 +271,7 @@ drive the deployment.
 | Phase | New checks | Regression |
 | --- | --- | --- |
 | 1 | Invalid email/ORCID blocks submit; conflict blocks save; confirm dialog appears and cancels cleanly; navigating away while dirty prompts, and doesn't after a save | Existing save + submit suites must pass unchanged |
-| 2 | Screenshot the member editor at 390 / 820 / 1440 px; assert no field is narrower than a usable minimum and the page never scrolls sideways | ORCID autocomplete and the member round-trip |
+| 2 | Screenshot the member editor at 1024 / 1440 px; assert columns align across rows, no field is narrower than a usable minimum, and the page never scrolls sideways | ORCID autocomplete and the member round-trip |
 | 3 | Screenshot all four pages before and after; assert no literal `#6200ee` remains in `src/` | Full suite — this touches every view |
 | 4 | Header shows ID, name and status; required markers present; editor preview still escapes markup | The XSS suite, unchanged |
 
