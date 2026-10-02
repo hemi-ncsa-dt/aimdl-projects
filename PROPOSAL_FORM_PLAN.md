@@ -396,6 +396,24 @@ their ORCID record as a research proposal. Low priority — the feature is sandb
 
 ---
 
+**Phase 2 status: done.** Frontend only — Phase 0 had already taught the backend
+`assistanceRequired`, `daysRequested` and `experimentPlan`, and `files[].type` is a free
+string server-side, so nothing in `girder-jsonforms` needed touching. Verified with 34
+Playwright assertions against the dev stack.
+
+Notes for later phases:
+
+- The form now branches on `projectType` in five places. They all read from
+  `isDevelopment()` / `requiresProposalDocument()` in `constants/project.ts` rather than
+  comparing strings in the template, so Phase 3 and 4 should keep adding predicates there.
+- The required-proposal-document check cannot be a VForm rule — files are not a form
+  field — so it sits beside the single-instrument conflict check at the top of
+  `submitForReview()`. Any further cross-field gate belongs in the same place.
+- `FileUploader.updateFileType()` no longer drops `itemId` when a type changes (noted in
+  2.4). Deletion had been covering for it with a refetch.
+
+---
+
 ## Phase 3 — Safety (item 7)
 
 ### 3.1 Hazard checklists — **Straightforward**

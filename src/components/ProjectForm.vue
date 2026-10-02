@@ -2,7 +2,7 @@
 import { ref, watch, computed, onMounted, onBeforeUnmount } from 'vue';
 import { onBeforeRouteLeave } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
-import { ProjectRole } from '@/types';
+import { ProjectRole, FileType } from '@/types';
 import type { Project, ProjectMember, AutocompleteSuggestion, Person } from '@/types';
 import FileUploader from './FileUploader.vue';
 import MarkdownEditor from './MarkdownEditor.vue';
@@ -15,7 +15,10 @@ import {
     accessCategoryOptions,
     dataClassificationOptions,
     isExternal,
+    isDevelopment,
     requiresPublicOverview,
+    requiresProposalDocument,
+    integratedProposalChecklist,
     DATA_POLICY_URL,
 } from '@/constants/project';
 import { debounce } from 'lodash';
@@ -57,6 +60,9 @@ const form = ref<Partial<Project> & { members: ProjectMember[] }>({
     organization: '',
     dataClassification: undefined,
     funding: { grants: [], internalBudgetNumber: '' },
+    assistanceRequired: undefined,
+    daysRequested: '',
+    experimentPlan: '',
 });
 
 const orcidSuggestions = ref<AutocompleteSuggestion[]>([]);
@@ -96,7 +102,36 @@ const descriptionRule = [
     (v: string) => !!v?.trim() || 'A public overview is required for open and opt-out projects',
 ];
 
+const assistanceRule = [
+    (v: boolean | undefined) => v !== undefined || 'Please answer yes or no',
+];
+
+const daysRule = [
+    (v: string) => !!v?.trim() || 'An estimate of the time required is needed',
+];
+
+const experimentPlanRule = [
+    (v: string) => !!v?.trim() || 'Describe the experiments to be performed',
+];
+
 const roleOptions = Object.values(ProjectRole);
+
+// Development projects are lab staff changing AIMD-L infrastructure (2.5). The submitter
+// is known to the reviewers, so the form stops asking them to introduce themselves --
+// but keeps everything that is about the work, hazards included.
+const isDev = computed(() => isDevelopment(form.value.projectType));
+
+const showApplicantFields = computed(() => !isDev.value);
+
+const needsProposalDocument = computed(() => requiresProposalDocument(form.value.projectType));
+
+const hasProposalFile = computed(() =>
+    (form.value.files || []).some(f => f.type === FileType.PROPOSAL)
+);
+
+const experimentPlanLabel = computed(() => isDev.value
+    ? 'What is being changed, and why'
+    : 'Description of experiments');
 
 const showOrganization = computed(() => isExternal(form.value.accessCategory));
 
@@ -167,6 +202,15 @@ const initInstruments = (instruments: { name: string }[] | undefined) => {
     otherInstrumentText.value = unknown || '';
 };
 
+// 2.5: a development project is JHU work on open infrastructure by definition, so those
+// two answers are filled in rather than put to lab staff. Runs during seeding too, which
+// keeps them inside the dirty-check baseline instead of marking a freshly loaded form dirty.
+watch(() => form.value.projectType, (type) => {
+    if (!isDevelopment(type)) return;
+    form.value.accessCategory = 'jhu';
+    form.value.dataClassification = form.value.dataClassification || 'open';
+});
+
 watch([selectedInstruments, otherInstrumentText], () => {
     form.value.instruments = selectedInstruments.value.map(i => ({
         name: i === 'other' ? (otherInstrumentText.value.trim() || 'other') : i,
@@ -199,6 +243,9 @@ watch(() => props.project, (source) => {
             grants: (source.funding?.grants || []).map(g => ({ ...g })),
             internalBudgetNumber: source.funding?.internalBudgetNumber || '',
         },
+        assistanceRequired: source.assistanceRequired,
+        daysRequested: source.daysRequested || '',
+        experimentPlan: source.experimentPlan || '',
     };
     initInstruments(source.instruments);
     // Defer so the instruments watcher has rewritten form.instruments before we snapshot;
@@ -306,6 +353,7 @@ const buildPayload = (): Partial<Project> => {
     const {
         name, description, status, members, samples, files, projectType, instruments,
         accessCategory, organization, dataClassification, funding,
+        assistanceRequired, daysRequested, experimentPlan,
     } = form.value;
     return {
         name: name || '',
@@ -326,6 +374,9 @@ const buildPayload = (): Partial<Project> => {
             grants: (funding?.grants || []).filter(g => g.agency || g.grantNumber),
             internalBudgetNumber: funding?.internalBudgetNumber || '',
         },
+        assistanceRequired,
+        daysRequested: daysRequested || '',
+        experimentPlan: experimentPlan || '',
     };
 };
 
@@ -371,6 +422,13 @@ const submitForReview = async () => {
         return;
     }
 
+    if (needsProposalDocument.value && !hasProposalFile.value) {
+        emit('update:error',
+            'An integrated proposal needs its proposal document attached. Upload it under '
+            + 'Documents and set its type to "proposal".');
+        return;
+    }
+
     const result = await formRef.value?.validate();
     if (result && !result.valid) {
         emit('update:error', 'Some required details are missing or invalid. They are highlighted below.');
@@ -410,8 +468,9 @@ const cancel = () => {
 
         </v-select>
 
-            <v-select v-model="form.accessCategory" :items="accessCategoryOptions" item-title="title"
-                item-value="value" label="Access Category *" placeholder="Select access category"
+            <v-select v-if="showApplicantFields" v-model="form.accessCategory"
+                :items="accessCategoryOptions" item-title="title" item-value="value"
+                label="Access Category *" placeholder="Select access category"
                 :rules="accessCategoryRule" class="my-2" />
 
             <v-text-field v-if="showOrganization" v-model="form.organization"
@@ -420,7 +479,7 @@ const cancel = () => {
                 :rules="organizationRule" class="my-2" />
         </section>
 
-        <section class="form-card">
+        <section v-if="showApplicantFields" class="form-card">
             <h2 class="section-title">Data handling</h2>
             <p class="section-hint">
                 This describes the material you will bring to AIMD-L and the data the
@@ -445,7 +504,7 @@ const cancel = () => {
             </p>
         </section>
 
-        <section class="form-card">
+        <section v-if="showApplicantFields" class="form-card">
             <h2 class="section-title">Public overview</h2>
             <p class="section-hint">
                 Provide a brief abstract describing the proposed research, including a statement
@@ -471,7 +530,8 @@ const cancel = () => {
                     <template #label>
                         <span class="instrument-label">
                             <a v-if="instrument.url" :href="instrument.url" target="_blank" rel="noopener noreferrer"
-                                class="text-primary font-weight-medium" @click.stop>{{ instrument.label }}</a>
+                                class="text-primary font-weight-medium" :title="instrument.expansion"
+                                @click.stop>{{ instrument.label }}</a>
                             <span v-else class="font-weight-medium">{{ instrument.label }}</span>
                             <span v-if="instrument.description" class="text-caption text-grey-darken-1">
                                 &mdash; {{ instrument.description }}
@@ -486,6 +546,36 @@ const cancel = () => {
             <div v-if="singleInstrumentConflict" class="text-caption text-error mt-2 ml-2">
                 Single-instrument project requires exactly one instrument selected.
             </div>
+        </section>
+
+        <section class="form-card">
+            <h2 class="section-title">Scope of work</h2>
+
+            <MarkdownEditor v-if="!needsProposalDocument" v-model="form.experimentPlan"
+                :label="`${experimentPlanLabel}${isDev ? '' : ' *'}`"
+                :rules="isDev ? [] : experimentPlanRule" class="my-2" />
+            <p v-if="!needsProposalDocument && !isDev" class="section-hint">
+                Kinds of samples, measurements to be done, and how the data will be analysed
+                and used.
+            </p>
+
+            <v-text-field v-model="form.daysRequested"
+                :label="`Time required${isDev ? '' : ' *'}`"
+                :rules="isDev ? [] : daysRule"
+                placeholder="e.g. 3 days, or 4 half-days"
+                hint="An estimate is fine." class="my-2" style="max-width: 400px" />
+
+            <template v-if="showApplicantFields">
+                <v-radio-group v-model="form.assistanceRequired" :rules="assistanceRule" class="mt-4">
+                    <template #label>
+                        <span class="radio-group-label">
+                            Do you require assistance from AIMD-L staff for the experiments? *
+                        </span>
+                    </template>
+                    <v-radio label="Yes" :value="true" />
+                    <v-radio label="No" :value="false" />
+                </v-radio-group>
+            </template>
         </section>
 
         <section class="form-card">
@@ -510,7 +600,7 @@ const cancel = () => {
             <v-btn @click="addMember" class="my-2">Add Member</v-btn>
         </section>
 
-        <section v-if="showFunding" class="form-card">
+        <section v-if="showApplicantFields && showFunding" class="form-card">
             <h2 class="section-title">Funding</h2>
             <template v-if="showGrants">
                 <p class="section-hint">Name the award(s) supporting this work, if any.</p>
@@ -531,9 +621,23 @@ const cancel = () => {
 
         <section class="form-card">
             <h2 class="section-title">Documents</h2>
+            <template v-if="needsProposalDocument">
+                <p class="section-hint">
+                    An integrated campaign is proposed in an uploaded document &mdash; a PDF of
+                    at most two pages. Set its type to <em>proposal</em> after selecting it.
+                    It should cover:
+                </p>
+                <ol class="proposal-checklist">
+                    <li v-for="point in integratedProposalChecklist" :key="point">{{ point }}</li>
+                </ol>
+            </template>
+            <p v-else class="section-hint">
+                No proposal document is needed &mdash; the description above is the proposal.
+                Attach anything that supports it, and choose a type for each file after
+                selecting it.
+            </p>
             <p class="section-hint">
-                Attach the proposal document and a CV for the PI. Choose a type for each file
-                after selecting it.
+                You may also attach a data management plan, if you have one.
             </p>
             <FileUploader v-if="form.submissionFolderId" v-model="form.files!" :folder-id="form.submissionFolderId" />
             <div v-else class="text-caption text-grey">
@@ -626,6 +730,19 @@ const cancel = () => {
     .member-row > .v-btn {
         justify-self: start;
     }
+}
+
+.proposal-checklist {
+    margin: -8px 0 16px 20px;
+    padding: 0;
+    font-size: 13px;
+    color: var(--c-text-muted);
+    line-height: 1.6;
+}
+
+.radio-group-label {
+    color: var(--c-text);
+    font-size: 14px;
 }
 
 .classification-group :deep(.v-selection-control) {

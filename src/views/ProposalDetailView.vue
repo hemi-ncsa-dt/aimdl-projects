@@ -76,13 +76,28 @@
                     <span v-else class="detail-unset">Not specified</span>
                 </dd>
 
+                <dt>Time Requested</dt>
+                <dd>
+                    <template v-if="project.daysRequested">{{ project.daysRequested }}</template>
+                    <span v-else class="detail-unset">Not specified</span>
+                </dd>
+
+                <dt>Staff Assistance</dt>
+                <dd>
+                    <template v-if="project.assistanceRequired !== undefined">
+                        {{ project.assistanceRequired ? 'Required' : 'Not required' }}
+                    </template>
+                    <span v-else class="detail-unset">Not specified</span>
+                </dd>
+
                 <dt>Instruments</dt>
                 <dd>
                     <div v-if="project.instruments && project.instruments.length > 0" class="instrument-list">
                         <template v-for="instrument in project.instruments" :key="instrument.name">
                             <a v-if="instrumentUrl(instrument.name)" :href="instrumentUrl(instrument.name)"
                                 target="_blank" rel="noopener noreferrer" class="instrument-chip instrument-chip--link"
-                                :title="instrumentDescription(instrument.name)">
+                                :title="[instrumentExpansion(instrument.name), instrumentDescription(instrument.name)]
+                                    .filter(Boolean).join(' — ')">
                                 {{ instrument.name }}
                             </a>
                             <span v-else class="instrument-chip">{{ instrument.name }}</span>
@@ -91,6 +106,14 @@
                     <span v-else class="detail-unset">None selected</span>
                 </dd>
             </dl>
+        </div>
+
+        <!-- Experiment plan: the proposal itself for single-instrument and development work -->
+        <div v-if="project.experimentPlan" class="proposal-detail-card">
+            <h2 class="section-title">
+                {{ project.projectType === 'development' ? 'What is being changed' : 'Experiments' }}
+            </h2>
+            <div class="proposal-detail-description" v-html="renderMarkdown(project.experimentPlan)"></div>
         </div>
 
         <!-- Funding Section -->
@@ -153,7 +176,7 @@
                             <v-icon class="file-icon">mdi-file-document</v-icon>
                             {{ file.name || 'Unnamed file' }}
                         </div>
-                        <div class="file-type">{{ file.type }}</div>
+                        <div class="file-type">{{ fileTypeLabel(file.type) }}</div>
                         <div class="file-size">{{ formatFileSize(file.size) }}</div>
                         <a :href="getDownloadUrl(file.fileId)" class="download-link" title="Download file">
                             <v-icon>mdi-download</v-icon>
@@ -183,6 +206,8 @@ import {
     dataClassificationLabel,
     dataClassificationDescription,
     requiresPublicOverview,
+    instrumentExpansion,
+    fileTypeLabel,
 } from '@/constants/project';
 import { useAuthStore } from '@/stores/auth';
 import { VIcon } from 'vuetify/components';

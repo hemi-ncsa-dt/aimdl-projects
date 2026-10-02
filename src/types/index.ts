@@ -31,7 +31,8 @@ export interface Funding {
 
 export enum FileType {
     PROPOSAL = 'proposal',
-    CV = 'cv',
+    /** Data management plan. Optional for every project type. */
+    DMP = 'dmp',
     OTHER = 'other',
 }
 
@@ -63,6 +64,12 @@ export interface Project {
     organization?: string;
     dataClassification?: DataClassification;
     funding?: Funding;
+    /** Do the applicants need AIMD-L staff to run the experiments? */
+    assistanceRequired?: boolean;
+    /** Free text on purpose: "3 days", "2 half-days", "about a week". */
+    daysRequested?: string;
+    /** The proposal itself, for the types that write it inline rather than upload a PDF. */
+    experimentPlan?: string;
 }
 
 export interface Sample {

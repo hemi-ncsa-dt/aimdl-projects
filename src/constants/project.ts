@@ -1,9 +1,14 @@
+import { FileType } from '@/types';
 import type { AccessCategory, DataClassification, ProjectType } from '@/types';
 
 export interface InstrumentOption {
     value: string;
     label: string;
+    /** What the station does -- this is what an applicant choosing one needs. */
     description: string;
+    /** What the acronym stands for. Secondary: shown as a tooltip, since it is the only
+     *  place the name is explained but it does not help anyone pick a station. */
+    expansion: string;
     url: string;
 }
 
@@ -15,25 +20,29 @@ export const instrumentOptions: InstrumentOption[] = [
     {
         value: 'MAXIMA',
         label: 'MAXIMA',
-        description: 'Multimodal Automated X-ray Investigation of Materials',
+        description: 'x-ray diffraction / x-ray fluorescence spectroscopy',
+        expansion: 'Multimodal Automated X-ray Investigation of Materials',
         url: 'https://hemi.jhu.edu/caimee/center-facilities/aimd-l/#1745259387828-044ce224-dc05',
     },
     {
         value: 'HELIX',
         label: 'HELIX',
-        description: 'High-throughput Extreme Laser Impact eXperiments',
+        description: 'laser microflyer impact / laser-driven shock',
+        expansion: 'High-throughput Extreme Laser Impact eXperiments',
         url: 'https://hemi.jhu.edu/caimee/center-facilities/aimd-l/#1745356027264-0fcae1de-66a4',
     },
     {
         value: 'SPHINX',
         label: 'SPHINX',
-        description: 'Scanning Probe for High-resolution INdentation eXperiments',
+        description: 'nanoindentation',
+        expansion: 'Scanning Probe for High-resolution INdentation eXperiments',
         url: 'https://hemi.jhu.edu/caimee/center-facilities/aimd-l/#1745438879173-208b1f97-0fd2',
     },
     {
         value: 'other',
         label: 'Other',
         description: '',
+        expansion: '',
         url: '',
     },
 ];
@@ -148,4 +157,47 @@ export function instrumentUrl(name: string): string | undefined {
 
 export function instrumentDescription(name: string): string | undefined {
     return instrumentOptions.find(o => o.value === name)?.description || undefined;
+}
+
+export function instrumentExpansion(name: string): string | undefined {
+    return instrumentOptions.find(o => o.value === name)?.expansion || undefined;
+}
+
+/** Development projects are lab staff changing AIMD-L infrastructure: the submitter is
+ *  already known to the reviewers, so the form asks them for almost nothing. */
+export function isDevelopment(value: ProjectType | undefined): boolean {
+    return value === 'development';
+}
+
+/** Only an integrated campaign has to arrive as an uploaded document; a single-instrument
+ *  or development proposal is written straight into the form. */
+export function requiresProposalDocument(value: ProjectType | undefined): boolean {
+    return value === 'integrated';
+}
+
+/** The six points Todd's outline asks an integrated proposal to cover. */
+export const integratedProposalChecklist = [
+    'Context and motivation for the experiment',
+    'Knowledge gap or scientific hypothesis to be addressed',
+    'Description of the experiments to be performed — stations used, kinds of samples, '
+    + 'measurements, and how the data will be analysed',
+    'Expected data and outcomes, and how they address the gap or answer the hypothesis',
+    'An estimate of the number of days required',
+];
+
+
+export interface FileTypeOption {
+    value: FileType;
+    title: string;
+}
+
+/** `dmp` on its own is unreadable in a dropdown, so the picker shows these. */
+export const fileTypeOptions: FileTypeOption[] = [
+    { value: FileType.PROPOSAL, title: 'Proposal' },
+    { value: FileType.DMP, title: 'Data management plan' },
+    { value: FileType.OTHER, title: 'Other' },
+];
+
+export function fileTypeLabel(value: string | undefined): string {
+    return fileTypeOptions.find(o => o.value === value)?.title || value || 'Other';
 }
