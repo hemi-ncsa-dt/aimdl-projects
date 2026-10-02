@@ -74,7 +74,12 @@ function getStatusChipClass(status: ProjectStatus) {
                     @click="goToProposalDetail(project._id)">
                     <div class="proposal-item__info">
                         <h2 class="proposal-item__name">{{ project.projectId }}: {{ project.name }}</h2>
-                        <p class="proposal-item__description">{{ stripMarkdown(project.description) }}</p>
+                        <p v-if="project.description" class="proposal-item__description">
+                            {{ stripMarkdown(project.description) }}
+                        </p>
+                        <p v-else class="proposal-item__description proposal-item__description--empty">
+                            No public overview
+                        </p>
                     </div>
                     <div class="proposal-item__status">
                         <span class="status-chip" :class="getStatusChipClass(project.status)">
@@ -162,6 +167,13 @@ function getStatusChipClass(status: ProjectStatus) {
     font-size: 18px;
     font-weight: 500;
     margin: 0 0 8px 0;
+}
+
+/* A confidential proposal legitimately has no overview, so the row needs to read as
+   deliberately empty rather than as a missing value. */
+.proposal-item__description--empty {
+    font-style: italic;
+    opacity: 0.7;
 }
 
 .proposal-item__description {

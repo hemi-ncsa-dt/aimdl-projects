@@ -1,6 +1,34 @@
 export type ProjectStatus = 'draft' | 'under review' | 'accepted' | 'rejected';
 export type ProjectType = 'integrated' | 'singleInstrument' | 'development';
 
+/** Applicant affiliation. Unranked -- it replaced a numbered `priority` list whose
+ *  ordering the lab never actually allocated on. */
+export type AccessCategory =
+    | 'jhu'
+    | 'external-academic'
+    | 'external-corporate'
+    | 'external-government'
+    | 'external-foreign';
+
+/** How the data this project generates must be handled. Describes the material coming
+ *  into the lab, not the proposal documents uploaded here. */
+export type DataClassification =
+    | 'open'
+    | 'confidential-proprietary'
+    | 'confidential-controlled'
+    | 'opt-out';
+
+export interface Grant {
+    agency: string;
+    grantNumber: string;
+}
+
+export interface Funding {
+    grants: Grant[];
+    /** JHU internal budget/IO number. */
+    internalBudgetNumber: string;
+}
+
 export enum FileType {
     PROPOSAL = 'proposal',
     CV = 'cv',
@@ -30,7 +58,11 @@ export interface Project {
     projectId: string;
     projectType?: ProjectType;
     instruments?: { name: string }[];
-    priority?: number;
+    accessCategory?: AccessCategory;
+    /** Home institution/company. Asked of external applicants only. */
+    organization?: string;
+    dataClassification?: DataClassification;
+    funding?: Funding;
 }
 
 export interface Sample {
@@ -58,7 +90,7 @@ export interface Person {
     lastName: string;
     email: string;
     public: boolean;
-    groups: String[];
+    groups: string[];
 }
 
 export interface Group {

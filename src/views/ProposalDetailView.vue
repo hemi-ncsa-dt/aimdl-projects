@@ -22,7 +22,15 @@
                     </button>
                 </div>
             </div>
-            <p class="proposal-detail-description" v-html="renderMarkdown(project.description)"></p>
+            <p v-if="project.description" class="proposal-detail-description"
+                v-html="renderMarkdown(project.description)"></p>
+            <p v-else class="proposal-detail-description detail-unset">
+                No public overview
+                <template v-if="project.dataClassification && !requiresPublicOverview(project.dataClassification)">
+                    &mdash; not required for {{ dataClassificationLabel(project.dataClassification)?.toLowerCase() }}
+                    data
+                </template>
+            </p>
         </div>
 
         <!-- Details Section -->
@@ -42,8 +50,28 @@
 
                 <dt>Access Category</dt>
                 <dd>
-                    <template v-if="project.priority">
-                        {{ priorityLabel(project.priority) || project.priority }}
+                    <template v-if="project.accessCategory">
+                        {{ accessCategoryLabel(project.accessCategory) || project.accessCategory }}
+                    </template>
+                    <span v-else class="detail-unset">Not specified</span>
+                </dd>
+
+                <dt>Organization</dt>
+                <dd>
+                    <template v-if="project.organization">{{ project.organization }}</template>
+                    <span v-else-if="project.accessCategory === 'jhu'" class="detail-unset">
+                        Johns Hopkins University
+                    </span>
+                    <span v-else class="detail-unset">Not specified</span>
+                </dd>
+
+                <dt>Data Classification</dt>
+                <dd>
+                    <template v-if="project.dataClassification">
+                        {{ dataClassificationLabel(project.dataClassification) || project.dataClassification }}
+                        <div v-if="dataClassificationDescription(project.dataClassification)" class="detail-hint">
+                            {{ dataClassificationDescription(project.dataClassification) }}
+                        </div>
                     </template>
                     <span v-else class="detail-unset">Not specified</span>
                 </dd>
@@ -62,6 +90,26 @@
                     </div>
                     <span v-else class="detail-unset">None selected</span>
                 </dd>
+            </dl>
+        </div>
+
+        <!-- Funding Section -->
+        <div v-if="hasFunding" class="proposal-detail-card">
+            <h2 class="section-title">Funding</h2>
+            <dl class="detail-grid">
+                <template v-if="project.funding?.grants?.length">
+                    <dt>Grants</dt>
+                    <dd>
+                        <div v-for="(grant, index) in project.funding.grants" :key="index">
+                            {{ grant.agency || 'Unnamed agency' }}
+                            <span v-if="grant.grantNumber" class="detail-hint">{{ grant.grantNumber }}</span>
+                        </div>
+                    </dd>
+                </template>
+                <template v-if="project.funding?.internalBudgetNumber">
+                    <dt>Budget / IO number</dt>
+                    <dd>{{ project.funding.internalBudgetNumber }}</dd>
+                </template>
             </dl>
         </div>
 
@@ -119,7 +167,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted } from 'vue';
+import { computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useProjectStore } from '@/stores/project';
 import { storeToRefs } from 'pinia';
@@ -131,7 +179,10 @@ import {
     instrumentDescription,
     projectTypeLabel,
     projectTypeDescription,
-    priorityLabel,
+    accessCategoryLabel,
+    dataClassificationLabel,
+    dataClassificationDescription,
+    requiresPublicOverview,
 } from '@/constants/project';
 import { useAuthStore } from '@/stores/auth';
 import { VIcon } from 'vuetify/components';
@@ -145,6 +196,11 @@ const { currentProject: project, loading, error } = storeToRefs(projectStore);
 
 onMounted(() => {
     projectStore.fetchProject(route.params.id as string);
+});
+
+const hasFunding = computed(() => {
+    const funding = project.value?.funding;
+    return !!(funding?.grants?.length || funding?.internalBudgetNumber);
 });
 
 function goBack() {

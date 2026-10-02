@@ -1,4 +1,4 @@
-import type { ProjectType } from '@/types';
+import type { AccessCategory, DataClassification, ProjectType } from '@/types';
 
 export interface InstrumentOption {
     value: string;
@@ -62,20 +62,64 @@ export const projectTypeOptions: ProjectTypeOption[] = [
     },
 ];
 
-export interface PriorityOption {
-    value: number;
+export interface AccessCategoryOption {
+    value: AccessCategory;
     title: string;
 }
 
-/** Access categories, in descending priority order. */
-export const priorityOptions: PriorityOption[] = [
-    { value: 1, title: 'CAIMEE principal investigator (or collaborator)' },
-    { value: 2, title: 'Researcher from primary partner institution' },
-    { value: 3, title: 'HEMI fellow' },
-    { value: 4, title: 'WSE faculty' },
-    { value: 5, title: 'Other JHU faculty' },
-    { value: 6, title: 'External researcher' },
+/** Applicant affiliation. Deliberately unordered: this replaced a numbered list whose
+ *  ranking the lab never allocated on, so nothing should read an order into it. */
+export const accessCategoryOptions: AccessCategoryOption[] = [
+    { value: 'jhu', title: 'Johns Hopkins University' },
+    { value: 'external-academic', title: 'External (academic / not-for-profit)' },
+    { value: 'external-corporate', title: 'External (corporate / industrial)' },
+    { value: 'external-government', title: 'External (government)' },
+    { value: 'external-foreign', title: 'External (foreign, non-US)' },
 ];
+
+/** True for every category that is not JHU, i.e. the ones that must name an organization. */
+export function isExternal(value: AccessCategory | undefined): boolean {
+    return !!value && value !== 'jhu';
+}
+
+export interface DataClassificationOption {
+    value: DataClassification;
+    title: string;
+    description: string;
+}
+
+/** How the data a project generates has to be handled. These descriptions are the form's
+ *  own: DATA_POLICY_URL is a stub today, so the text here has to stand on its own. */
+export const dataClassificationOptions: DataClassificationOption[] = [
+    {
+        value: 'open',
+        title: 'Open',
+        description: 'Fundamental research, with no restrictions on publication or sharing.',
+    },
+    {
+        value: 'confidential-proprietary',
+        title: 'Confidential / proprietary',
+        description: 'Corporate data not for public release, and not export controlled.',
+    },
+    {
+        value: 'confidential-controlled',
+        title: 'Confidential / controlled',
+        description: 'Corporate or government data subject to export restrictions and/or CUI.',
+    },
+    {
+        value: 'opt-out',
+        title: 'Opt-out',
+        description: 'Neither confidential nor proprietary, but with restrictions on dissemination.',
+    },
+];
+
+export const DATA_POLICY_URL = 'https://docs.htmdec.org/aimdl/data-management/';
+
+/** The public overview is only published for work that may be disseminated, so it is only
+ *  demanded for those two classifications. */
+export function requiresPublicOverview(value: DataClassification | undefined): boolean {
+    return value === 'open' || value === 'opt-out';
+}
 
 export function projectTypeLabel(value: ProjectType | undefined): string | undefined {
     return projectTypeOptions.find(o => o.value === value)?.title;
@@ -85,8 +129,16 @@ export function projectTypeDescription(value: ProjectType | undefined): string |
     return projectTypeOptions.find(o => o.value === value)?.description;
 }
 
-export function priorityLabel(value: number | undefined): string | undefined {
-    return priorityOptions.find(o => o.value === value)?.title;
+export function accessCategoryLabel(value: AccessCategory | undefined): string | undefined {
+    return accessCategoryOptions.find(o => o.value === value)?.title;
+}
+
+export function dataClassificationLabel(value: DataClassification | undefined): string | undefined {
+    return dataClassificationOptions.find(o => o.value === value)?.title;
+}
+
+export function dataClassificationDescription(value: DataClassification | undefined): string | undefined {
+    return dataClassificationOptions.find(o => o.value === value)?.description;
 }
 
 /** Documentation URL for a known instrument; undefined for freeform "other" entries. */

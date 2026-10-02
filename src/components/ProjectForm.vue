@@ -6,9 +6,18 @@ import { ProjectRole } from '@/types';
 import type { Project, ProjectMember, AutocompleteSuggestion, Person } from '@/types';
 import FileUploader from './FileUploader.vue';
 import MarkdownEditor from './MarkdownEditor.vue';
-import { VForm, VTextField, VBtn, VSelect, VIcon, VCombobox, VCheckbox, VDialog, VCard, VCardTitle, VCardText, VCardActions, VSpacer } from 'vuetify/components';
+import { VForm, VTextField, VBtn, VSelect, VIcon, VCombobox, VCheckbox, VDialog, VCard, VCardTitle, VCardText, VCardActions, VSpacer, VRadioGroup, VRadio } from 'vuetify/components';
 import { getOrcidSuggestions, searchUsers } from '@/services/api';
-import { KNOWN_INSTRUMENTS, instrumentOptions, projectTypeOptions, priorityOptions } from '@/constants/project';
+import {
+    KNOWN_INSTRUMENTS,
+    instrumentOptions,
+    projectTypeOptions,
+    accessCategoryOptions,
+    dataClassificationOptions,
+    isExternal,
+    requiresPublicOverview,
+    DATA_POLICY_URL,
+} from '@/constants/project';
 import { debounce } from 'lodash';
 
 const props = withDefaults(defineProps<{
@@ -44,7 +53,10 @@ const form = ref<Partial<Project> & { members: ProjectMember[] }>({
     files: [],
     projectType: undefined,
     instruments: [],
-    priority: undefined,
+    accessCategory: undefined,
+    organization: '',
+    dataClassification: undefined,
+    funding: { grants: [], internalBudgetNumber: '' },
 });
 
 const orcidSuggestions = ref<AutocompleteSuggestion[]>([]);
@@ -65,7 +77,48 @@ const emailRule = [
     (v: string) => /.+@.+\..+/.test(v) || 'E-mail must be valid',
 ];
 
+// Every rule below only bites on Submit: save() never calls validate(), so a draft still
+// saves half-filled (UX_PLAN decision D1).
+const accessCategoryRule = [
+    (v: string) => !!v || 'Access category is required',
+];
+
+const organizationRule = [
+    (v: string) => !!v?.trim() || 'Organization is required for external applicants',
+];
+
+const dataClassificationRule = [
+    (v: string) => !!v || 'Data classification is required',
+];
+
+// Only demanded when the overview will actually be published.
+const descriptionRule = [
+    (v: string) => !!v?.trim() || 'A public overview is required for open and opt-out projects',
+];
+
 const roleOptions = Object.values(ProjectRole);
+
+const showOrganization = computed(() => isExternal(form.value.accessCategory));
+
+// Agency/grant numbers are asked of the categories that have them; corporate, government
+// and foreign applicants are funded through arrangements this form does not model yet.
+const showGrants = computed(() =>
+    form.value.accessCategory === 'jhu' || form.value.accessCategory === 'external-academic'
+);
+
+const showInternalBudget = computed(() => form.value.accessCategory === 'jhu');
+
+const showFunding = computed(() => showGrants.value || showInternalBudget.value);
+
+const needsPublicOverview = computed(() => requiresPublicOverview(form.value.dataClassification));
+
+function addGrant() {
+    form.value.funding!.grants.push({ agency: '', grantNumber: '' });
+}
+
+function removeGrant(index: number) {
+    form.value.funding!.grants.splice(index, 1);
+}
 
 const selectedInstruments = ref<string[]>([]);
 const otherInstrumentText = ref('');
@@ -139,7 +192,13 @@ watch(() => props.project, (source) => {
         files: source.files || [],
         projectType: source.projectType,
         instruments: source.instruments || [],
-        priority: source.priority || undefined,
+        accessCategory: source.accessCategory,
+        organization: source.organization || '',
+        dataClassification: source.dataClassification,
+        funding: {
+            grants: (source.funding?.grants || []).map(g => ({ ...g })),
+            internalBudgetNumber: source.funding?.internalBudgetNumber || '',
+        },
     };
     initInstruments(source.instruments);
     // Defer so the instruments watcher has rewritten form.instruments before we snapshot;
@@ -244,7 +303,10 @@ const removeMember = (index: number) => {
 };
 
 const buildPayload = (): Partial<Project> => {
-    const { name, description, status, members, samples, files, projectType, instruments, priority } = form.value;
+    const {
+        name, description, status, members, samples, files, projectType, instruments,
+        accessCategory, organization, dataClassification, funding,
+    } = form.value;
     return {
         name: name || '',
         description: description || '',
@@ -254,7 +316,16 @@ const buildPayload = (): Partial<Project> => {
         files: files || [],
         projectType,
         instruments: instruments || [],
-        priority,
+        accessCategory,
+        // The backend rejects unknown keys but accepts empty strings; send organization
+        // only when it is actually asked for, so a JHU proposal carries no stale value
+        // from a category the applicant changed their mind about.
+        organization: isExternal(accessCategory) ? (organization || '') : '',
+        dataClassification,
+        funding: {
+            grants: (funding?.grants || []).filter(g => g.agency || g.grantNumber),
+            internalBudgetNumber: funding?.internalBudgetNumber || '',
+        },
     };
 };
 
@@ -339,10 +410,58 @@ const cancel = () => {
 
         </v-select>
 
-            <v-select v-model="form.priority" :items="priorityOptions" item-title="title" item-value="value"
-                label="Access Category" placeholder="Select access category" class="my-2" />
+            <v-select v-model="form.accessCategory" :items="accessCategoryOptions" item-title="title"
+                item-value="value" label="Access Category *" placeholder="Select access category"
+                :rules="accessCategoryRule" class="my-2" />
 
-            <MarkdownEditor v-model="form.description" label="Public Overview" class="my-4" />
+            <v-text-field v-if="showOrganization" v-model="form.organization"
+                label="Organization *" placeholder="Institution or company"
+                hint="The institution or company the proposal comes from."
+                :rules="organizationRule" class="my-2" />
+        </section>
+
+        <section class="form-card">
+            <h2 class="section-title">Data handling</h2>
+            <p class="section-hint">
+                This describes the material you will bring to AIMD-L and the data the
+                instruments generate from it &mdash; not the documents you upload here.
+                It tells us how that data has to be handled once it exists.
+            </p>
+            <v-radio-group v-model="form.dataClassification" :rules="dataClassificationRule"
+                class="classification-group">
+                <v-radio v-for="option in dataClassificationOptions" :key="option.value" :value="option.value">
+                    <template #label>
+                        <span class="classification-label">
+                            <span class="font-weight-medium">{{ option.title }}</span>
+                            <span class="text-caption text-grey-darken-1">{{ option.description }}</span>
+                        </span>
+                    </template>
+                </v-radio>
+            </v-radio-group>
+            <p class="section-hint section-hint--footnote">
+                <a :href="DATA_POLICY_URL" target="_blank" rel="noopener noreferrer">
+                    More about how AIMD-L handles data
+                </a>
+            </p>
+        </section>
+
+        <section class="form-card">
+            <h2 class="section-title">Public overview</h2>
+            <p class="section-hint">
+                Provide a brief abstract describing the proposed research, including a statement
+                of the problem, research objectives, kinds of materials to be tested, and
+                experimental approach.
+                <template v-if="needsPublicOverview">
+                    This abstract may be made publicly available after the proposal has been
+                    accepted.
+                </template>
+                <template v-else-if="form.dataClassification">
+                    Optional for this data classification &mdash; nothing here will be published.
+                </template>
+            </p>
+            <MarkdownEditor v-model="form.description"
+                :label="needsPublicOverview ? 'Public Overview *' : 'Public Overview'"
+                :rules="needsPublicOverview ? descriptionRule : []" class="my-4" />
         </section>
 
         <section class="form-card">
@@ -389,6 +508,25 @@ const cancel = () => {
                 </v-btn>
             </div>
             <v-btn @click="addMember" class="my-2">Add Member</v-btn>
+        </section>
+
+        <section v-if="showFunding" class="form-card">
+            <h2 class="section-title">Funding</h2>
+            <template v-if="showGrants">
+                <p class="section-hint">Name the award(s) supporting this work, if any.</p>
+                <div v-for="(grant, index) in form.funding!.grants" :key="index" class="grant-row">
+                    <v-text-field v-model="grant.agency" label="Funding agency" density="compact" />
+                    <v-text-field v-model="grant.grantNumber" label="Grant number" density="compact" />
+                    <v-btn icon variant="text" :aria-label="`Remove grant ${index + 1}`"
+                        @click="removeGrant(index)">
+                        <v-icon>mdi-delete</v-icon>
+                    </v-btn>
+                </div>
+                <v-btn @click="addGrant" class="my-2">Add grant</v-btn>
+            </template>
+            <v-text-field v-if="showInternalBudget" v-model="form.funding!.internalBudgetNumber"
+                label="Budget / IO number" hint="For work charged to a JHU internal budget."
+                class="my-2" style="max-width: 400px" />
         </section>
 
         <section class="form-card">
@@ -486,6 +624,40 @@ const cancel = () => {
     }
 
     .member-row > .v-btn {
+        justify-self: start;
+    }
+}
+
+.classification-group :deep(.v-selection-control) {
+    align-items: flex-start;
+}
+
+.classification-label {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.4;
+    padding: 2px 0;
+}
+
+.section-hint--footnote {
+    margin: 4px 0 0;
+}
+
+/* Same intent as .member-row: one template so every row's columns line up. */
+.grant-row {
+    display: grid;
+    grid-template-columns: minmax(12rem, 1.4fr) minmax(10rem, 1fr) auto;
+    gap: 0 12px;
+    align-items: start;
+    margin: 4px 0;
+}
+
+@media (max-width: 1023.98px) {
+    .grant-row {
+        grid-template-columns: minmax(10rem, 1fr) minmax(10rem, 1fr);
+    }
+
+    .grant-row > .v-btn {
         justify-self: start;
     }
 }

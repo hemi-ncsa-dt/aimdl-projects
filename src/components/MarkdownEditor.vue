@@ -6,6 +6,9 @@ import { renderMarkdown } from '@/utils/markdown';
 const props = defineProps<{
     modelValue: string | undefined;
     label?: string;
+    /** Forwarded to the textarea so the field takes part in the parent VForm's
+     *  validate() -- the submit gate, not the draft save. */
+    rules?: ((v: string) => boolean | string)[];
 }>();
 
 const emit = defineEmits<{
@@ -14,6 +17,7 @@ const emit = defineEmits<{
 
 const tab = ref(0);
 const localValue = ref(props.modelValue || '');
+const textareaRef = ref<InstanceType<typeof VTextarea> | null>(null);
 
 watch(() => props.modelValue, (newValue) => {
     localValue.value = newValue || '';
@@ -24,7 +28,7 @@ watch(localValue, (newValue) => {
 });
 
 const insertMarkdown = (before: string, after: string = '') => {
-    const textarea = document.querySelector('textarea') as HTMLTextAreaElement;
+    const textarea = textareaRef.value?.$el.querySelector('textarea') as HTMLTextAreaElement | undefined;
     if (!textarea) return;
 
     const start = textarea.selectionStart;
@@ -63,7 +67,8 @@ const insertMarkdown = (before: string, after: string = '') => {
                 </button>
             </div>
 
-            <v-textarea v-model="localValue" :label="label" rows="4" auto-grow></v-textarea>
+            <v-textarea ref="textareaRef" v-model="localValue" :label="label" :rules="rules" rows="4"
+                auto-grow></v-textarea>
 
             <div class="text-caption text-grey mt-1">
                 Formatting: **bold**, *italic*. Use Enter twice for new paragraphs.
