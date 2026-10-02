@@ -2,6 +2,7 @@
 import { ref, computed, onMounted } from 'vue';
 import { VFileInput, VSelect, VBtn, VProgressLinear, VCard, VCardText, VIcon } from 'vuetify/components';
 import { FileType, type ProjectFile, type FileUploadResult } from '@/types';
+import { fileTypeOptions } from '@/constants/project';
 import { initiateUpload, uploadChunk, getFileDetails, deleteItem } from '@/services/api';
 import { useAuthStore } from '@/stores/auth';
 
@@ -21,8 +22,6 @@ const uploadProgress = ref<Record<string, number>>({});
 const uploadingFiles = ref<Set<string>>(new Set());
 const uploadedFiles = computed(() => props.modelValue || []);
 const fileDetailsCache = ref<Map<string, { name: string; size: number; itemId: string }>>(new Map());
-
-const fileTypeOptions = Object.values(FileType);
 
 const CHUNK_SIZE = 1024 * 1024 * 5; // 5MB chunks
 
@@ -178,13 +177,7 @@ const updateFileType = (index: number, newType: FileType) => {
     const oldFile = newFiles[index];
     if (!oldFile) return;
 
-    const { fileId, name, size } = oldFile;
-    newFiles[index] = {
-        fileId,
-        type: newType,
-        name,
-        size,
-    };
+    newFiles[index] = { ...oldFile, type: newType };
     emit('update:modelValue', newFiles);
 };
 
@@ -200,7 +193,8 @@ const isUploading = computed(() => uploadingFiles.value.size > 0);
             <v-card v-for="(file, index) in uploadedFiles" :key="file.fileId" class="mb-2">
                 <v-card-text class="d-flex align-center">
                     <v-select :model-value="file.type" @update:model-value="(value) => updateFileType(index, value)"
-                        :items="fileTypeOptions" label="File Type" density="compact"
+                        :items="fileTypeOptions" item-title="title" item-value="value"
+                        label="File Type" density="compact"
                         style="min-width: 150px; max-width: 150px;" class="mr-4"></v-select>
                     <div class="flex-grow-1">
                         <div class="font-weight-medium">{{ getFileName(file) }}</div>
@@ -222,8 +216,9 @@ const isUploading = computed(() => uploadingFiles.value.size > 0);
             <v-card v-for="file in selectedFiles" :key="file.name" class="mb-2">
                 <v-card-text class="d-flex align-center">
                     <span class="mr-4 flex-grow-1">{{ file.name }}</span>
-                    <v-select v-model="fileTypes[file.name]" :items="fileTypeOptions" label="File Type"
-                        density="compact" style="max-width: 200px;"></v-select>
+                    <v-select v-model="fileTypes[file.name]" :items="fileTypeOptions" item-title="title"
+                        item-value="value" label="File Type" density="compact"
+                        style="max-width: 200px;"></v-select>
 
                     <!-- Progress bar for this file -->
                     <div v-if="uploadingFiles.has(file.name)" class="ml-4" style="width: 100px;">

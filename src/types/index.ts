@@ -1,9 +1,50 @@
 export type ProjectStatus = 'draft' | 'under review' | 'accepted' | 'rejected';
 export type ProjectType = 'integrated' | 'singleInstrument' | 'development';
 
+/** Applicant affiliation. Unranked -- it replaced a numbered `priority` list whose
+ *  ordering the lab never actually allocated on. */
+export type AccessCategory =
+    | 'jhu'
+    | 'external-academic'
+    | 'external-corporate'
+    | 'external-government'
+    | 'external-foreign';
+
+/** How the data this project generates must be handled. Describes the material coming
+ *  into the lab, not the proposal documents uploaded here. */
+export type DataClassification =
+    | 'open'
+    | 'confidential-proprietary'
+    | 'confidential-controlled'
+    | 'opt-out';
+
+export type SampleHazard =
+    | 'none' | 'toxic' | 'flammable' | 'energetic' | 'biosafety' | 'radioactive' | 'other';
+
+export type OtherHazard =
+    | 'none' | 'laser' | 'high-temperature' | 'high-voltage' | 'user-equipment';
+
+export interface Safety {
+    sampleHazards: SampleHazard[];
+    otherHazards: OtherHazard[];
+    description: string;
+}
+
+export interface Grant {
+    agency: string;
+    grantNumber: string;
+}
+
+export interface Funding {
+    grants: Grant[];
+    /** JHU internal budget/IO number. */
+    internalBudgetNumber: string;
+}
+
 export enum FileType {
     PROPOSAL = 'proposal',
-    CV = 'cv',
+    /** Data management plan. Optional for every project type. */
+    DMP = 'dmp',
     OTHER = 'other',
 }
 
@@ -30,7 +71,18 @@ export interface Project {
     projectId: string;
     projectType?: ProjectType;
     instruments?: { name: string }[];
-    priority?: number;
+    accessCategory?: AccessCategory;
+    /** Home institution/company. Asked of external applicants only. */
+    organization?: string;
+    dataClassification?: DataClassification;
+    funding?: Funding;
+    /** Do the applicants need AIMD-L staff to run the experiments? */
+    assistanceRequired?: boolean;
+    /** Free text on purpose: "3 days", "2 half-days", "about a week". */
+    daysRequested?: string;
+    /** The proposal itself, for the types that write it inline rather than upload a PDF. */
+    experimentPlan?: string;
+    safety?: Safety;
 }
 
 export interface Sample {
@@ -58,7 +110,7 @@ export interface Person {
     lastName: string;
     email: string;
     public: boolean;
-    groups: String[];
+    groups: string[];
 }
 
 export interface Group {
@@ -106,11 +158,20 @@ export interface Item {
     updated: Date;
 }
 
+/**
+ * The access level a member gets on the project's data once it is accepted, not a job
+ * title. The backend maps it in `lib/events.py:_role_to_access_level` (PI -> ADMIN,
+ * manager -> WRITE, user -> READ) and picks PIs as the recipients of decision e-mail, so
+ * it cannot be replaced by `MemberStatus`. The form labels it "Data access".
+ */
 export enum ProjectRole {
     PI = 'PI',
     MANAGER = 'manager',
     USER = 'user',
 }
+
+/** Career stage. Orthogonal to ProjectRole. */
+export type MemberStatus = 'faculty' | 'staff' | 'postdoc' | 'grad' | 'undergrad' | 'other';
 
 export interface ProjectMember {
     firstName: string;
@@ -119,6 +180,13 @@ export interface ProjectMember {
     role: ProjectRole;
     email: string;
     userId: string | null;
+    /** Day-to-day contact. Defaults to the PI but can be moved to anyone. */
+    isPointOfContact?: boolean;
+    /** False for members taking part only remotely. */
+    onSite?: boolean;
+    status?: MemberStatus;
+    /** Only set when it differs from the project's organization. */
+    institution?: string;
 }
 
 export interface AutocompleteSuggestion {

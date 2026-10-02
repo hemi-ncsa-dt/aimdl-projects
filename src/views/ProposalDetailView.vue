@@ -22,7 +22,47 @@
                     </button>
                 </div>
             </div>
-            <p class="proposal-detail-description" v-html="renderMarkdown(project.description)"></p>
+            <p v-if="project.description" class="proposal-detail-description"
+                v-html="renderMarkdown(project.description)"></p>
+            <p v-else class="proposal-detail-description detail-unset">
+                No public overview
+                <template v-if="project.dataClassification && !requiresPublicOverview(project.dataClassification)">
+                    &mdash; not required for {{ dataClassificationLabel(project.dataClassification)?.toLowerCase() }}
+                    data
+                </template>
+            </p>
+        </div>
+
+        <!-- Safety: directly below the header, so it cannot be scrolled past (3.2) -->
+        <div v-if="hasSafetyAnswer" class="proposal-detail-card"
+            :class="{ 'proposal-detail-card--hazard': declaredHazards }">
+            <h2 class="section-title">Safety</h2>
+            <dl class="detail-grid">
+                <dt>Samples</dt>
+                <dd>
+                    <div v-if="sampleHazardLabels.length" class="instrument-list">
+                        <span v-for="label in sampleHazardLabels" :key="label" class="instrument-chip">
+                            {{ label }}
+                        </span>
+                    </div>
+                    <span v-else class="detail-unset">Not declared</span>
+                </dd>
+
+                <dt>Other hazards</dt>
+                <dd>
+                    <div v-if="otherHazardLabels.length" class="instrument-list">
+                        <span v-for="label in otherHazardLabels" :key="label" class="instrument-chip">
+                            {{ label }}
+                        </span>
+                    </div>
+                    <span v-else class="detail-unset">Not declared</span>
+                </dd>
+
+                <template v-if="safety?.description">
+                    <dt>Description</dt>
+                    <dd>{{ safety.description }}</dd>
+                </template>
+            </dl>
         </div>
 
         <!-- Details Section -->
@@ -42,8 +82,42 @@
 
                 <dt>Access Category</dt>
                 <dd>
-                    <template v-if="project.priority">
-                        {{ priorityLabel(project.priority) || project.priority }}
+                    <template v-if="project.accessCategory">
+                        {{ accessCategoryLabel(project.accessCategory) || project.accessCategory }}
+                    </template>
+                    <span v-else class="detail-unset">Not specified</span>
+                </dd>
+
+                <dt>Organization</dt>
+                <dd>
+                    <template v-if="project.organization">{{ project.organization }}</template>
+                    <span v-else-if="project.accessCategory === 'jhu'" class="detail-unset">
+                        Johns Hopkins University
+                    </span>
+                    <span v-else class="detail-unset">Not specified</span>
+                </dd>
+
+                <dt>Data Classification</dt>
+                <dd>
+                    <template v-if="project.dataClassification">
+                        {{ dataClassificationLabel(project.dataClassification) || project.dataClassification }}
+                        <div v-if="dataClassificationDescription(project.dataClassification)" class="detail-hint">
+                            {{ dataClassificationDescription(project.dataClassification) }}
+                        </div>
+                    </template>
+                    <span v-else class="detail-unset">Not specified</span>
+                </dd>
+
+                <dt>Time Requested</dt>
+                <dd>
+                    <template v-if="project.daysRequested">{{ project.daysRequested }}</template>
+                    <span v-else class="detail-unset">Not specified</span>
+                </dd>
+
+                <dt>Staff Assistance</dt>
+                <dd>
+                    <template v-if="project.assistanceRequired !== undefined">
+                        {{ project.assistanceRequired ? 'Required' : 'Not required' }}
                     </template>
                     <span v-else class="detail-unset">Not specified</span>
                 </dd>
@@ -54,7 +128,8 @@
                         <template v-for="instrument in project.instruments" :key="instrument.name">
                             <a v-if="instrumentUrl(instrument.name)" :href="instrumentUrl(instrument.name)"
                                 target="_blank" rel="noopener noreferrer" class="instrument-chip instrument-chip--link"
-                                :title="instrumentDescription(instrument.name)">
+                                :title="[instrumentExpansion(instrument.name), instrumentDescription(instrument.name)]
+                                    .filter(Boolean).join(' — ')">
                                 {{ instrument.name }}
                             </a>
                             <span v-else class="instrument-chip">{{ instrument.name }}</span>
@@ -62,6 +137,34 @@
                     </div>
                     <span v-else class="detail-unset">None selected</span>
                 </dd>
+            </dl>
+        </div>
+
+        <!-- Experiment plan: the proposal itself for single-instrument and development work -->
+        <div v-if="project.experimentPlan" class="proposal-detail-card">
+            <h2 class="section-title">
+                {{ project.projectType === 'development' ? 'What is being changed' : 'Experiments' }}
+            </h2>
+            <div class="proposal-detail-description" v-html="renderMarkdown(project.experimentPlan)"></div>
+        </div>
+
+        <!-- Funding Section -->
+        <div v-if="hasFunding" class="proposal-detail-card">
+            <h2 class="section-title">Funding</h2>
+            <dl class="detail-grid">
+                <template v-if="project.funding?.grants?.length">
+                    <dt>Grants</dt>
+                    <dd>
+                        <div v-for="(grant, index) in project.funding.grants" :key="index">
+                            {{ grant.agency || 'Unnamed agency' }}
+                            <span v-if="grant.grantNumber" class="detail-hint">{{ grant.grantNumber }}</span>
+                        </div>
+                    </dd>
+                </template>
+                <template v-if="project.funding?.internalBudgetNumber">
+                    <dt>Budget / IO number</dt>
+                    <dd>{{ project.funding.internalBudgetNumber }}</dd>
+                </template>
             </dl>
         </div>
 
@@ -78,12 +181,21 @@
                             <div class="member-name">{{ member.firstName }} {{ member.lastName }}</div>
                             <div class="member-email">{{ member.email }}</div>
                             <div class="member-orcid">ORCID: {{ member.orcidId }}</div>
+                            <div v-if="member.status" class="member-meta">
+                                {{ memberStatusLabel(member.status) }}
+                            </div>
+                            <div v-if="member.institution" class="member-meta">
+                                {{ member.institution }}
+                            </div>
                         </div>
                     </div>
                     <div class="member-role">
-                        <span class="role-badge" :class="`role-badge--${member.role.toLowerCase()}`">
-                            {{ member.role }}
+                        <span v-if="member.role === 'PI'" class="role-badge role-badge--pi">PI</span>
+                        <span v-if="member.isPointOfContact" class="role-badge role-badge--contact">
+                            Point of contact
                         </span>
+                        <span v-if="member.onSite" class="role-badge role-badge--onsite">On site</span>
+                        <span class="member-access">{{ roleLabel(member.role) }}</span>
                     </div>
                 </div>
             </div>
@@ -105,7 +217,7 @@
                             <v-icon class="file-icon">mdi-file-document</v-icon>
                             {{ file.name || 'Unnamed file' }}
                         </div>
-                        <div class="file-type">{{ file.type }}</div>
+                        <div class="file-type">{{ fileTypeLabel(file.type) }}</div>
                         <div class="file-size">{{ formatFileSize(file.size) }}</div>
                         <a :href="getDownloadUrl(file.fileId)" class="download-link" title="Download file">
                             <v-icon>mdi-download</v-icon>
@@ -119,7 +231,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted } from 'vue';
+import { computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useProjectStore } from '@/stores/project';
 import { storeToRefs } from 'pinia';
@@ -131,7 +243,18 @@ import {
     instrumentDescription,
     projectTypeLabel,
     projectTypeDescription,
-    priorityLabel,
+    accessCategoryLabel,
+    dataClassificationLabel,
+    dataClassificationDescription,
+    requiresPublicOverview,
+    instrumentExpansion,
+    fileTypeLabel,
+    sampleHazardOptions,
+    otherHazardOptions,
+    hazardLabels,
+    hazardsDeclared,
+    memberStatusLabel,
+    roleLabel,
 } from '@/constants/project';
 import { useAuthStore } from '@/stores/auth';
 import { VIcon } from 'vuetify/components';
@@ -145,6 +268,28 @@ const { currentProject: project, loading, error } = storeToRefs(projectStore);
 
 onMounted(() => {
     projectStore.fetchProject(route.params.id as string);
+});
+
+// 3.2: hazards belong where a reviewer cannot scroll past them, not below the file list.
+const safety = computed(() => project.value?.safety);
+
+const declaredHazards = computed(() => hazardsDeclared(
+    safety.value?.sampleHazards, safety.value?.otherHazards,
+));
+
+const hasSafetyAnswer = computed(() =>
+    !!(safety.value?.sampleHazards?.length || safety.value?.otherHazards?.length)
+);
+
+const sampleHazardLabels = computed(() =>
+    hazardLabels(safety.value?.sampleHazards, sampleHazardOptions));
+
+const otherHazardLabels = computed(() =>
+    hazardLabels(safety.value?.otherHazards, otherHazardOptions));
+
+const hasFunding = computed(() => {
+    const funding = project.value?.funding;
+    return !!(funding?.grants?.length || funding?.internalBudgetNumber);
 });
 
 function goBack() {
@@ -192,6 +337,29 @@ function getDownloadUrl(fileId: string): string {
 </script>
 
 <style scoped>
+/* A declared hazard gets a visible edge; "None everywhere" stays a plain card. */
+.proposal-detail-card--hazard {
+    border-left: 4px solid var(--c-warning);
+}
+
+.member-meta {
+    font-size: 13px;
+    color: var(--c-text-muted);
+}
+
+.member-role {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 6px;
+}
+
+.member-access {
+    font-size: 12px;
+    color: var(--c-text-muted);
+}
+
 .navigation-header {
     margin-bottom: 16px;
 }
@@ -416,12 +584,12 @@ function getDownloadUrl(fileId: string): string {
     color: white;
 }
 
-.role-badge--manager {
+.role-badge--contact {
     background-color: var(--c-secondary);
     color: rgba(0, 0, 0, 0.87);
 }
 
-.role-badge--user {
+.role-badge--onsite {
     background-color: var(--c-border);
     color: rgba(0, 0, 0, 0.87);
 }

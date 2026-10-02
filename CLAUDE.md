@@ -94,17 +94,27 @@ download cannot set the `Girder-Token` header, and Girder answers **401** withou
   Only `draft` proposals are editable/deletable in the UI.
 - Backend-derived fields never sent on create: `_id`, `owner`, `created`, `updated`,
   `submissionFolderId`, `projectId`. The `Omit<...>` in `createProject` encodes this.
-- **The backend fills in defaults the client never sent.** `POST /project` returns
-  `projectType: 'integrated'` and `priority: 0` even when both are omitted. So a "blank"
-  draft is never blank: the edit form shows *Integrated project* pre-selected, and
-  `priority: 0` is the falsy "unset" sentinel (there is no access category 0). Verified
-  against the live dev API, not inferred.
+- **The backend fills in a default the client never sent.** `POST /project` returns
+  `projectType: 'integrated'` even when it is omitted, so a "blank" draft is never blank:
+  the edit form shows *Integrated project* pre-selected. Verified against the live dev
+  API, not inferred. (`priority` used to be defaulted to `0` as a falsy "unset" sentinel;
+  the field is gone — see **accessCategory**.)
 - **ProjectMember** — freeform person (first/last/email/ORCID/role) with an optional
   `userId` linking to a real Girder `Person`. Roles: `PI`, `manager`, `user`.
 - **Instruments** — the three real AIMD-L stations are `MAXIMA`, `HELIX`, `SPHINX`; the
   form adds an `other` checkbox whose free text is stored as the instrument name.
   `KNOWN_INSTRUMENTS` in `constants/project.ts` is what distinguishes them on load.
-- **priority** — 1–6 "access category" (CAIMEE PI … external researcher).
+- **accessCategory** — applicant affiliation: `jhu` or one of four `external-*` values.
+  Deliberately *unranked*; it replaced a numbered `priority` field (1–6, CAIMEE PI …
+  external researcher) whose ordering the lab never allocated on. Absent until chosen —
+  there is no sentinel value. External categories must also name an `organization`.
+- **dataClassification** — `open`, `confidential-proprietary`, `confidential-controlled`
+  or `opt-out`. It describes the material coming *into* the lab and the data the
+  instruments generate, not the proposal documents uploaded here, and it is advisory:
+  access to a project's data still defaults to its own members. It gates one thing in the
+  UI — the public overview is only required for `open` and `opt-out`.
+- **funding** — `{ grants: [{ agency, grantNumber }], internalBudgetNumber }`. Shown for
+  JHU and external-academic applicants only; the budget/IO number is JHU-only.
 - **Girder primitives** — `Folder`, `Item`, `File`, `Group`, `Person` interfaces exist in
   `types/index.ts` (several are declared but not yet used). A project gets a collection
   and a `submissionFolderId` created server-side; uploads go into that folder.

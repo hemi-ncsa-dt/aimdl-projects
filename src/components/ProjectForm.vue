@@ -2,13 +2,32 @@
 import { ref, watch, computed, onMounted, onBeforeUnmount } from 'vue';
 import { onBeforeRouteLeave } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
-import { ProjectRole } from '@/types';
-import type { Project, ProjectMember, AutocompleteSuggestion, Person } from '@/types';
+import { ProjectRole, FileType } from '@/types';
+import type { Project, ProjectMember, AutocompleteSuggestion, Person, SampleHazard, OtherHazard } from '@/types';
 import FileUploader from './FileUploader.vue';
 import MarkdownEditor from './MarkdownEditor.vue';
-import { VForm, VTextField, VBtn, VSelect, VIcon, VCombobox, VCheckbox, VDialog, VCard, VCardTitle, VCardText, VCardActions, VSpacer } from 'vuetify/components';
+import { VForm, VTextField, VBtn, VSelect, VIcon, VCombobox, VCheckbox, VDialog, VCard, VCardTitle, VCardText, VCardActions, VSpacer, VRadioGroup, VRadio, VTextarea, VInput, VAlert } from 'vuetify/components';
 import { getOrcidSuggestions, searchUsers } from '@/services/api';
-import { KNOWN_INSTRUMENTS, instrumentOptions, projectTypeOptions, priorityOptions } from '@/constants/project';
+import {
+    KNOWN_INSTRUMENTS,
+    instrumentOptions,
+    projectTypeOptions,
+    accessCategoryOptions,
+    dataClassificationOptions,
+    isExternal,
+    isDevelopment,
+    requiresPublicOverview,
+    requiresProposalDocument,
+    integratedProposalChecklist,
+    sampleHazardOptions,
+    otherHazardOptions,
+    hazardsDeclared,
+    HAZARDS_NEEDING_APPROVAL,
+    memberStatusOptions,
+    roleOptions,
+    DATA_POLICY_URL,
+    ORCID_REGISTER_URL,
+} from '@/constants/project';
 import { debounce } from 'lodash';
 
 const props = withDefaults(defineProps<{
@@ -44,7 +63,14 @@ const form = ref<Partial<Project> & { members: ProjectMember[] }>({
     files: [],
     projectType: undefined,
     instruments: [],
-    priority: undefined,
+    accessCategory: undefined,
+    organization: '',
+    dataClassification: undefined,
+    funding: { grants: [], internalBudgetNumber: '' },
+    assistanceRequired: undefined,
+    daysRequested: '',
+    experimentPlan: '',
+    safety: { sampleHazards: [], otherHazards: [], description: '' },
 });
 
 const orcidSuggestions = ref<AutocompleteSuggestion[]>([]);
@@ -65,7 +91,115 @@ const emailRule = [
     (v: string) => /.+@.+\..+/.test(v) || 'E-mail must be valid',
 ];
 
-const roleOptions = Object.values(ProjectRole);
+// Every rule below only bites on Submit: save() never calls validate(), so a draft still
+// saves half-filled (UX_PLAN decision D1).
+const accessCategoryRule = [
+    (v: string) => !!v || 'Access category is required',
+];
+
+const organizationRule = [
+    (v: string) => !!v?.trim() || 'Organization is required for external applicants',
+];
+
+const dataClassificationRule = [
+    (v: string) => !!v || 'Data classification is required',
+];
+
+// Only demanded when the overview will actually be published.
+const descriptionRule = [
+    (v: string) => !!v?.trim() || 'A public overview is required for open and opt-out projects',
+];
+
+const assistanceRule = [
+    (v: boolean | undefined) => v !== undefined || 'Please answer yes or no',
+];
+
+const daysRule = [
+    (v: string) => !!v?.trim() || 'An estimate of the time required is needed',
+];
+
+const experimentPlanRule = [
+    (v: string) => !!v?.trim() || 'Describe the experiments to be performed',
+];
+
+// Leaving both lists blank must not read as "no hazards" -- that is what the None box is
+// for, and it has to be ticked deliberately.
+const sampleHazardRule = [
+    (v: string[]) => !!v?.length || 'Tick the hazards that apply, or None',
+];
+
+const otherHazardRule = [
+    (v: string[]) => !!v?.length || 'Tick the hazards that apply, or None',
+];
+
+
+// Development projects are lab staff changing AIMD-L infrastructure (2.5). The submitter
+// is known to the reviewers, so the form stops asking them to introduce themselves --
+// but keeps everything that is about the work, hazards included.
+const isDev = computed(() => isDevelopment(form.value.projectType));
+
+const showApplicantFields = computed(() => !isDev.value);
+
+const needsProposalDocument = computed(() => requiresProposalDocument(form.value.projectType));
+
+const hasProposalFile = computed(() =>
+    (form.value.files || []).some(f => f.type === FileType.PROPOSAL)
+);
+
+const experimentPlanLabel = computed(() => isDev.value
+    ? 'What is being changed, and why'
+    : 'Description of experiments');
+
+const showOrganization = computed(() => isExternal(form.value.accessCategory));
+
+// Agency/grant numbers are asked of the categories that have them; corporate, government
+// and foreign applicants are funded through arrangements this form does not model yet.
+const showGrants = computed(() =>
+    form.value.accessCategory === 'jhu' || form.value.accessCategory === 'external-academic'
+);
+
+const showInternalBudget = computed(() => form.value.accessCategory === 'jhu');
+
+const showFunding = computed(() => showGrants.value || showInternalBudget.value);
+
+const needsPublicOverview = computed(() => requiresPublicOverview(form.value.dataClassification));
+
+const hazardsPresent = computed(() =>
+    hazardsDeclared(form.value.safety?.sampleHazards, form.value.safety?.otherHazards)
+);
+
+const needsSeparateApproval = computed(() =>
+    (form.value.safety?.sampleHazards || []).some(h => HAZARDS_NEEDING_APPROVAL.includes(h))
+);
+
+const hazardDescriptionRule = computed(() => hazardsPresent.value
+    ? [(v: string) => !!v?.trim() || 'Describe the hazard(s) you have ticked']
+    : []);
+
+/** "None" and a named hazard cannot both be true, so each clears the other. Written as an
+ *  explicit toggle rather than a watcher: a watcher on the array would fight the user's
+ *  click on the way back out of the None state. */
+function toggleHazard<T extends string>(list: T[], value: T): T[] {
+    if (list.includes(value)) return list.filter(h => h !== value);
+    if (value === 'none') return ['none' as T];
+    return [...list.filter(h => h !== ('none' as T)), value];
+}
+
+function toggleSampleHazard(value: SampleHazard) {
+    form.value.safety!.sampleHazards = toggleHazard(form.value.safety!.sampleHazards, value);
+}
+
+function toggleOtherHazard(value: OtherHazard) {
+    form.value.safety!.otherHazards = toggleHazard(form.value.safety!.otherHazards, value);
+}
+
+function addGrant() {
+    form.value.funding!.grants.push({ agency: '', grantNumber: '' });
+}
+
+function removeGrant(index: number) {
+    form.value.funding!.grants.splice(index, 1);
+}
 
 const selectedInstruments = ref<string[]>([]);
 const otherInstrumentText = ref('');
@@ -114,6 +248,15 @@ const initInstruments = (instruments: { name: string }[] | undefined) => {
     otherInstrumentText.value = unknown || '';
 };
 
+// 2.5: a development project is JHU work on open infrastructure by definition, so those
+// two answers are filled in rather than put to lab staff. Runs during seeding too, which
+// keeps them inside the dirty-check baseline instead of marking a freshly loaded form dirty.
+watch(() => form.value.projectType, (type) => {
+    if (!isDevelopment(type)) return;
+    form.value.accessCategory = 'jhu';
+    form.value.dataClassification = form.value.dataClassification || 'open';
+});
+
 watch([selectedInstruments, otherInstrumentText], () => {
     form.value.instruments = selectedInstruments.value.map(i => ({
         name: i === 'other' ? (otherInstrumentText.value.trim() || 'other') : i,
@@ -134,12 +277,30 @@ watch(() => props.project, (source) => {
             orcidId: m.orcidId || '',
             role: m.role,
             userId: m.userId || null,
+            isPointOfContact: m.isPointOfContact ?? false,
+            onSite: m.onSite ?? false,
+            status: m.status,
+            institution: m.institution || '',
         })),
         samples: source.samples || [],
         files: source.files || [],
         projectType: source.projectType,
         instruments: source.instruments || [],
-        priority: source.priority || undefined,
+        accessCategory: source.accessCategory,
+        organization: source.organization || '',
+        dataClassification: source.dataClassification,
+        funding: {
+            grants: (source.funding?.grants || []).map(g => ({ ...g })),
+            internalBudgetNumber: source.funding?.internalBudgetNumber || '',
+        },
+        assistanceRequired: source.assistanceRequired,
+        daysRequested: source.daysRequested || '',
+        experimentPlan: source.experimentPlan || '',
+        safety: {
+            sampleHazards: [...(source.safety?.sampleHazards || [])],
+            otherHazards: [...(source.safety?.otherHazards || [])],
+            description: source.safety?.description || '',
+        },
     };
     initInstruments(source.instruments);
     // Defer so the instruments watcher has rewritten form.instruments before we snapshot;
@@ -236,15 +397,61 @@ const addMember = () => {
         orcidId: '',
         role: ProjectRole.USER,
         userId: null,
+        isPointOfContact: false,
+        onSite: false,
+        status: undefined,
+        institution: '',
     });
 };
+
+const isPI = (member: ProjectMember) => member.role === ProjectRole.PI;
+
+/**
+ * There is exactly one PI, and ticking the box moves the role rather than adding a second
+ * one. `role` is the stored access level the backend acts on, so the checkbox drives it
+ * instead of living beside it (B2). The point of contact follows the PI by default -- it
+ * is a separate, movable flag, so it only follows when nobody else holds it.
+ */
+const setPI = (member: ProjectMember, value: boolean) => {
+    if (!value) {
+        member.role = ProjectRole.USER;
+        return;
+    }
+    form.value.members.forEach((m) => {
+        if (m !== member && m.role === ProjectRole.PI) m.role = ProjectRole.USER;
+    });
+    member.role = ProjectRole.PI;
+    if (!form.value.members.some(m => m.isPointOfContact)) {
+        member.isPointOfContact = true;
+    }
+};
+
+/** Exactly one contact: ticking a new one releases the old. */
+const setPointOfContact = (member: ProjectMember, value: boolean) => {
+    if (value) {
+        form.value.members.forEach((m) => { m.isPointOfContact = m === member; });
+    } else {
+        member.isPointOfContact = false;
+    }
+};
+
+const piCount = computed(() => form.value.members.filter(isPI).length);
+const contactCount = computed(() => form.value.members.filter(m => m.isPointOfContact).length);
+
+const memberStatusRule = [
+    (v: string) => !!v || 'Status is required',
+];
 
 const removeMember = (index: number) => {
     form.value.members.splice(index, 1);
 };
 
 const buildPayload = (): Partial<Project> => {
-    const { name, description, status, members, samples, files, projectType, instruments, priority } = form.value;
+    const {
+        name, description, status, members, samples, files, projectType, instruments,
+        accessCategory, organization, dataClassification, funding,
+        assistanceRequired, daysRequested, experimentPlan, safety,
+    } = form.value;
     return {
         name: name || '',
         description: description || '',
@@ -254,7 +461,24 @@ const buildPayload = (): Partial<Project> => {
         files: files || [],
         projectType,
         instruments: instruments || [],
-        priority,
+        accessCategory,
+        // The backend rejects unknown keys but accepts empty strings; send organization
+        // only when it is actually asked for, so a JHU proposal carries no stale value
+        // from a category the applicant changed their mind about.
+        organization: isExternal(accessCategory) ? (organization || '') : '',
+        dataClassification,
+        funding: {
+            grants: (funding?.grants || []).filter(g => g.agency || g.grantNumber),
+            internalBudgetNumber: funding?.internalBudgetNumber || '',
+        },
+        assistanceRequired,
+        daysRequested: daysRequested || '',
+        experimentPlan: experimentPlan || '',
+        safety: {
+            sampleHazards: safety?.sampleHazards || [],
+            otherHazards: safety?.otherHazards || [],
+            description: safety?.description || '',
+        },
     };
 };
 
@@ -295,15 +519,40 @@ const save = () => {
 
 // D1: the review gate is where the rules bite.
 const submitForReview = async () => {
+    // Field rules first: they highlight every offending field at once, so the applicant
+    // sees the whole picture. The cross-field checks below have no field to highlight and
+    // speak through the alert, so running them first would report one problem and leave
+    // the rest of a half-filled form unmarked.
+    const result = await formRef.value?.validate();
+    if (result && !result.valid) {
+        emit('update:error', 'Some required details are missing or invalid. They are highlighted below.');
+        focusFirstInvalid();
+        return;
+    }
+
     if (singleInstrumentConflict.value) {
         emit('update:error', 'Single-instrument project requires exactly one instrument selected.');
         return;
     }
 
-    const result = await formRef.value?.validate();
-    if (result && !result.valid) {
-        emit('update:error', 'Some required details are missing or invalid. They are highlighted below.');
-        focusFirstInvalid();
+    if (piCount.value !== 1) {
+        emit('update:error', piCount.value === 0
+            ? 'Tick the PI on one of the team members.'
+            : 'Only one team member can be the PI.');
+        return;
+    }
+
+    if (contactCount.value !== 1) {
+        emit('update:error', contactCount.value === 0
+            ? 'Tick the point of contact on one of the team members.'
+            : 'Only one team member can be the point of contact.');
+        return;
+    }
+
+    if (needsProposalDocument.value && !hasProposalFile.value) {
+        emit('update:error',
+            'An integrated proposal needs its proposal document attached. Upload it under '
+            + 'Documents and set its type to "proposal".');
         return;
     }
 
@@ -339,10 +588,59 @@ const cancel = () => {
 
         </v-select>
 
-            <v-select v-model="form.priority" :items="priorityOptions" item-title="title" item-value="value"
-                label="Access Category" placeholder="Select access category" class="my-2" />
+            <v-select v-if="showApplicantFields" v-model="form.accessCategory"
+                :items="accessCategoryOptions" item-title="title" item-value="value"
+                label="Access Category *" placeholder="Select access category"
+                :rules="accessCategoryRule" class="my-2" />
 
-            <MarkdownEditor v-model="form.description" label="Public Overview" class="my-4" />
+            <v-text-field v-if="showOrganization" v-model="form.organization"
+                label="Organization *" placeholder="Institution or company"
+                hint="The institution or company the proposal comes from."
+                :rules="organizationRule" class="my-2" />
+        </section>
+
+        <section v-if="showApplicantFields" class="form-card">
+            <h2 class="section-title">Data handling</h2>
+            <p class="section-hint">
+                This describes the material you will bring to AIMD-L and the data the
+                instruments generate from it &mdash; not the documents you upload here.
+                It tells us how that data has to be handled once it exists.
+            </p>
+            <v-radio-group v-model="form.dataClassification" :rules="dataClassificationRule"
+                class="classification-group">
+                <v-radio v-for="option in dataClassificationOptions" :key="option.value" :value="option.value">
+                    <template #label>
+                        <span class="classification-label">
+                            <span class="font-weight-medium">{{ option.title }}</span>
+                            <span class="text-caption text-grey-darken-1">{{ option.description }}</span>
+                        </span>
+                    </template>
+                </v-radio>
+            </v-radio-group>
+            <p class="section-hint section-hint--footnote">
+                <a :href="DATA_POLICY_URL" target="_blank" rel="noopener noreferrer">
+                    More about how AIMD-L handles data
+                </a>
+            </p>
+        </section>
+
+        <section v-if="showApplicantFields" class="form-card">
+            <h2 class="section-title">Public overview</h2>
+            <p class="section-hint">
+                Provide a brief abstract describing the proposed research, including a statement
+                of the problem, research objectives, kinds of materials to be tested, and
+                experimental approach.
+                <template v-if="needsPublicOverview">
+                    This abstract may be made publicly available after the proposal has been
+                    accepted.
+                </template>
+                <template v-else-if="form.dataClassification">
+                    Optional for this data classification &mdash; nothing here will be published.
+                </template>
+            </p>
+            <MarkdownEditor v-model="form.description"
+                :label="needsPublicOverview ? 'Public Overview *' : 'Public Overview'"
+                :rules="needsPublicOverview ? descriptionRule : []" class="my-4" />
         </section>
 
         <section class="form-card">
@@ -352,7 +650,8 @@ const cancel = () => {
                     <template #label>
                         <span class="instrument-label">
                             <a v-if="instrument.url" :href="instrument.url" target="_blank" rel="noopener noreferrer"
-                                class="text-primary font-weight-medium" @click.stop>{{ instrument.label }}</a>
+                                class="text-primary font-weight-medium" :title="instrument.expansion"
+                                @click.stop>{{ instrument.label }}</a>
                             <span v-else class="font-weight-medium">{{ instrument.label }}</span>
                             <span v-if="instrument.description" class="text-caption text-grey-darken-1">
                                 &mdash; {{ instrument.description }}
@@ -370,32 +669,171 @@ const cancel = () => {
         </section>
 
         <section class="form-card">
+            <h2 class="section-title">Scope of work</h2>
+
+            <MarkdownEditor v-if="!needsProposalDocument" v-model="form.experimentPlan"
+                :label="`${experimentPlanLabel}${isDev ? '' : ' *'}`"
+                :rules="isDev ? [] : experimentPlanRule" class="my-2" />
+            <p v-if="!needsProposalDocument && !isDev" class="section-hint">
+                Kinds of samples, measurements to be done, and how the data will be analysed
+                and used.
+            </p>
+
+            <v-text-field v-model="form.daysRequested"
+                :label="`Time required${isDev ? '' : ' *'}`"
+                :rules="isDev ? [] : daysRule"
+                placeholder="e.g. 3 days, or 4 half-days"
+                hint="An estimate is fine." class="my-2" style="max-width: 400px" />
+
+            <template v-if="showApplicantFields">
+                <v-radio-group v-model="form.assistanceRequired" :rules="assistanceRule" class="mt-4">
+                    <template #label>
+                        <span class="radio-group-label">
+                            Do you require assistance from AIMD-L staff for the experiments? *
+                        </span>
+                    </template>
+                    <v-radio label="Yes" :value="true" />
+                    <v-radio label="No" :value="false" />
+                </v-radio-group>
+            </template>
+        </section>
+
+        <section class="form-card">
+            <h2 class="section-title">Safety</h2>
+            <p class="section-hint">
+                Tell us about anything hazardous you will bring or create. Tick
+                <em>None</em> if there is nothing in a list.
+            </p>
+
+            <div class="hazard-groups">
+                <v-input :model-value="form.safety!.sampleHazards" :rules="sampleHazardRule"
+                    hide-details="auto" class="hazard-group">
+                    <div>
+                        <h3 class="hazard-group__title">Samples</h3>
+                        <v-checkbox v-for="hazard in sampleHazardOptions" :key="hazard.value"
+                            :model-value="form.safety!.sampleHazards.includes(hazard.value)"
+                            :label="hazard.title" hide-details density="compact"
+                            @update:model-value="toggleSampleHazard(hazard.value)" />
+                    </div>
+                </v-input>
+
+                <v-input :model-value="form.safety!.otherHazards" :rules="otherHazardRule"
+                    hide-details="auto" class="hazard-group">
+                    <div>
+                        <h3 class="hazard-group__title">Other hazards</h3>
+                        <v-checkbox v-for="hazard in otherHazardOptions" :key="hazard.value"
+                            :model-value="form.safety!.otherHazards.includes(hazard.value)"
+                            :label="hazard.title" hide-details density="compact"
+                            @update:model-value="toggleOtherHazard(hazard.value)" />
+                    </div>
+                </v-input>
+            </div>
+
+            <v-textarea v-model="form.safety!.description"
+                :label="`Description of the hazard(s)${hazardsPresent ? ' *' : ''}`"
+                :rules="hazardDescriptionRule" rows="3" auto-grow class="mt-4" />
+
+            <v-alert v-if="needsSeparateApproval" type="info" variant="tonal" density="compact"
+                class="mt-2">
+                Biosafety and radioactive materials normally need separate institutional
+                approval before work can start. Note the approval or its status in the
+                description above, and AIMD-L staff will follow up.
+            </v-alert>
+        </section>
+
+        <section class="form-card">
             <h2 class="section-title">Team members</h2>
-            <div v-for="(member, index) in form.members" :key="index" class="member-row">
-                <v-combobox v-model="member.firstName" :items="firstNameSuggestions" label="First Name"
-                    @update:search="onUserSearch" @update:model-value="(value: string) => onFirstNameChange(value, member)">
-                </v-combobox>
-                <v-combobox v-model="member.lastName" :items="lastNameSuggestions" label="Last Name"
-                    @update:search="onUserSearch" @update:model-value="(value: string) => onLastNameChange(value, member)">
-                </v-combobox>
-                <v-text-field v-model="member.email" label="Email *" :rules="emailRule"></v-text-field>
-                <v-combobox v-model="member.orcidId" :items="orcidSuggestions" item-title="text" item-value="text"
-                    :return-object="false" label="ORCID iD *" :rules="orcidRule"
-                    @focus="onOrcidFocus(member)" @blur="onOrcidBlur"
-                    @update:modelValue="(value: string) => onOrcidSelect(value, member)"></v-combobox>
-                <v-select v-model="member.role" :items="roleOptions" label="Role"></v-select>
-                <v-btn icon variant="text" :aria-label="`Remove member ${index + 1}`" @click="removeMember(index)">
-                    <v-icon>mdi-delete</v-icon>
-                </v-btn>
+            <p class="section-hint">
+                An ORCID iD is required for everyone listed: the proposal is registered with
+                ORCID once it is accepted.
+                <a :href="ORCID_REGISTER_URL" target="_blank" rel="noopener noreferrer">
+                    Get an ORCID iD
+                </a>
+                if you do not have one.
+            </p>
+
+            <div v-for="(member, index) in form.members" :key="index" class="member-card">
+                <div class="member-card__row">
+                    <v-combobox v-model="member.firstName" :items="firstNameSuggestions" label="First Name"
+                        @update:search="onUserSearch" @update:model-value="(value: string) => onFirstNameChange(value, member)">
+                    </v-combobox>
+                    <v-combobox v-model="member.lastName" :items="lastNameSuggestions" label="Last Name"
+                        @update:search="onUserSearch" @update:model-value="(value: string) => onLastNameChange(value, member)">
+                    </v-combobox>
+                    <v-text-field v-model="member.email" label="Email *" :rules="emailRule"></v-text-field>
+                </div>
+
+                <div class="member-card__row">
+                    <v-combobox v-model="member.orcidId" :items="orcidSuggestions" item-title="text" item-value="text"
+                        :return-object="false" label="ORCID iD *" :rules="orcidRule"
+                        @focus="onOrcidFocus(member)" @blur="onOrcidBlur"
+                        @update:modelValue="(value: string) => onOrcidSelect(value, member)"></v-combobox>
+                    <v-select v-model="member.status" :items="memberStatusOptions" item-title="title"
+                        item-value="value" label="Status *" :rules="memberStatusRule" />
+                    <v-text-field v-model="member.institution" label="Institution"
+                        placeholder="Same as the PI's" />
+                </div>
+
+                <div class="member-card__flags">
+                    <v-checkbox :model-value="isPI(member)" label="PI" hide-details density="compact"
+                        @update:model-value="(v: boolean | null) => setPI(member, !!v)" />
+                    <v-checkbox :model-value="member.isPointOfContact" label="Point of contact"
+                        hide-details density="compact"
+                        @update:model-value="(v: boolean | null) => setPointOfContact(member, !!v)" />
+                    <v-checkbox v-model="member.onSite" label="Coming to AIMD-L" hide-details
+                        density="compact" />
+                    <v-select v-if="!isPI(member)" v-model="member.role" :items="roleOptions"
+                        item-title="title" item-value="value" label="Data access" density="compact"
+                        hide-details class="member-card__access" />
+                    <span v-else class="member-card__access-fixed">Data access: full (PI)</span>
+                    <v-spacer />
+                    <v-btn icon variant="text" :aria-label="`Remove member ${index + 1}`"
+                        @click="removeMember(index)">
+                        <v-icon>mdi-delete</v-icon>
+                    </v-btn>
+                </div>
             </div>
             <v-btn @click="addMember" class="my-2">Add Member</v-btn>
         </section>
 
+        <section v-if="showApplicantFields && showFunding" class="form-card">
+            <h2 class="section-title">Funding</h2>
+            <template v-if="showGrants">
+                <p class="section-hint">Name the award(s) supporting this work, if any.</p>
+                <div v-for="(grant, index) in form.funding!.grants" :key="index" class="grant-row">
+                    <v-text-field v-model="grant.agency" label="Funding agency" density="compact" />
+                    <v-text-field v-model="grant.grantNumber" label="Grant number" density="compact" />
+                    <v-btn icon variant="text" :aria-label="`Remove grant ${index + 1}`"
+                        @click="removeGrant(index)">
+                        <v-icon>mdi-delete</v-icon>
+                    </v-btn>
+                </div>
+                <v-btn @click="addGrant" class="my-2">Add grant</v-btn>
+            </template>
+            <v-text-field v-if="showInternalBudget" v-model="form.funding!.internalBudgetNumber"
+                label="Budget / IO number" hint="For work charged to a JHU internal budget."
+                class="my-2" style="max-width: 400px" />
+        </section>
+
         <section class="form-card">
             <h2 class="section-title">Documents</h2>
+            <template v-if="needsProposalDocument">
+                <p class="section-hint">
+                    An integrated campaign is proposed in an uploaded document &mdash; a PDF of
+                    at most two pages. Set its type to <em>proposal</em> after selecting it.
+                    It should cover:
+                </p>
+                <ol class="proposal-checklist">
+                    <li v-for="point in integratedProposalChecklist" :key="point">{{ point }}</li>
+                </ol>
+            </template>
+            <p v-else class="section-hint">
+                No proposal document is needed &mdash; the description above is the proposal.
+                Attach anything that supports it, and choose a type for each file after
+                selecting it.
+            </p>
             <p class="section-hint">
-                Attach the proposal document and a CV for the PI. Choose a type for each file
-                after selecting it.
+                You may also attach a data management plan, if you have one.
             </p>
             <FileUploader v-if="form.submissionFolderId" v-model="form.files!" :folder-id="form.submissionFolderId" />
             <div v-else class="text-caption text-grey">
@@ -464,28 +902,115 @@ const cancel = () => {
     color: var(--c-text);
 }
 
-/* One shared template, so every member row's columns line up (2.1). The minimums stop
-   fields collapsing into unreadable slivers; below the D2 laptop floor the row wraps
-   instead of compressing further. */
-.member-row {
-    display: grid;
-    grid-template-columns:
-        minmax(9rem, 1fr) minmax(9rem, 1fr) minmax(14rem, 1.6fr)
-        minmax(12rem, 1.4fr) minmax(8rem, 0.9fr) auto;
-    gap: 0 12px;
-    align-items: start;
-    margin: 8px 0;
+/* Eleven controls per person no longer fit one row, so each member is a bordered card of
+   three bands. Within a band the columns still line up across members, which is the
+   property the single-row grid was there for (2.1). */
+.member-card {
+    border: 1px solid var(--c-border);
+    border-radius: var(--radius);
+    padding: 12px 16px 4px;
+    margin: 12px 0;
 }
 
-/* 1024px is the supported floor (D2) and the full row still fits there. Below it, wrap to
-   two equal columns rather than letting fields fall into the icon-sized track. */
+.member-card__row {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(12rem, 1fr));
+    gap: 0 12px;
+    align-items: start;
+}
+
+.member-card__flags {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 20px;
+    padding-bottom: 8px;
+}
+
+.member-card__access {
+    max-width: 16rem;
+}
+
+.member-card__access-fixed {
+    font-size: 13px;
+    color: var(--c-text-muted);
+}
+
+/* 1024px is the supported floor (D2). Below it the bands stack two-up rather than letting
+   fields compress into slivers. */
 @media (max-width: 1023.98px) {
-    .member-row {
+    .member-card__row {
         grid-template-columns: minmax(10rem, 1fr) minmax(10rem, 1fr);
         row-gap: 4px;
     }
+}
 
-    .member-row > .v-btn {
+.hazard-groups {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(14rem, 1fr));
+    gap: 16px 24px;
+}
+
+@media (max-width: 1023.98px) {
+    .hazard-groups {
+        grid-template-columns: 1fr;
+    }
+}
+
+.hazard-group :deep(.v-input__control) {
+    display: block;
+}
+
+.hazard-group__title {
+    font-size: 14px;
+    font-weight: 500;
+    margin: 0 0 4px;
+    color: var(--c-text-muted);
+}
+
+.proposal-checklist {
+    margin: -8px 0 16px 20px;
+    padding: 0;
+    font-size: 13px;
+    color: var(--c-text-muted);
+    line-height: 1.6;
+}
+
+.radio-group-label {
+    color: var(--c-text);
+    font-size: 14px;
+}
+
+.classification-group :deep(.v-selection-control) {
+    align-items: flex-start;
+}
+
+.classification-label {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.4;
+    padding: 2px 0;
+}
+
+.section-hint--footnote {
+    margin: 4px 0 0;
+}
+
+/* Same intent as .member-row: one template so every row's columns line up. */
+.grant-row {
+    display: grid;
+    grid-template-columns: minmax(12rem, 1.4fr) minmax(10rem, 1fr) auto;
+    gap: 0 12px;
+    align-items: start;
+    margin: 4px 0;
+}
+
+@media (max-width: 1023.98px) {
+    .grant-row {
+        grid-template-columns: minmax(10rem, 1fr) minmax(10rem, 1fr);
+    }
+
+    .grant-row > .v-btn {
         justify-self: start;
     }
 }
