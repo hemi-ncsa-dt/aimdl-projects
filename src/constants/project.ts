@@ -176,7 +176,7 @@ export function requiresProposalDocument(value: ProjectType | undefined): boolea
     return value === 'integrated';
 }
 
-/** The six points Todd's outline asks an integrated proposal to cover. */
+/** What an integrated proposal has to cover. */
 export const integratedProposalChecklist = [
     'Context and motivation for the experiment',
     'Knowledge gap or scientific hypothesis to be addressed',
