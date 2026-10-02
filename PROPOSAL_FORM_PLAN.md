@@ -592,6 +592,21 @@ someone grants them access to anything.
 
 ---
 
+**Phase 5 status: done** (`girder-jsonforms` `ef984a3`). The Girder project page now shows
+project type, access category, organization, classification, time, assistance,
+instruments, safety, team and funding beside the approve/reject buttons. 5.1 holds: every
+field this plan adds renders on the proposal app's detail view as well.
+
+**Submit-gate ordering, found while re-running the suites together.** Phase 4's PI/contact
+checks were short-circuiting ahead of `formRef.validate()`, so a half-filled form reported
+"Tick the PI" and highlighted nothing. Field rules now run first and surface every
+offending field at once; the cross-field gates — instrument conflict, one PI, one contact,
+proposal document — speak through the alert afterwards. Worth remembering when adding the
+next gate: put anything with a field to highlight in `:rules`, and only what has none in
+`submitForReview()`.
+
+---
+
 ## Verification
 
 No test runner exists in this repo. Each phase is verified the way the UX plan's phases

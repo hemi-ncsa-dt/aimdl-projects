@@ -519,6 +519,17 @@ const save = () => {
 
 // D1: the review gate is where the rules bite.
 const submitForReview = async () => {
+    // Field rules first: they highlight every offending field at once, so the applicant
+    // sees the whole picture. The cross-field checks below have no field to highlight and
+    // speak through the alert, so running them first would report one problem and leave
+    // the rest of a half-filled form unmarked.
+    const result = await formRef.value?.validate();
+    if (result && !result.valid) {
+        emit('update:error', 'Some required details are missing or invalid. They are highlighted below.');
+        focusFirstInvalid();
+        return;
+    }
+
     if (singleInstrumentConflict.value) {
         emit('update:error', 'Single-instrument project requires exactly one instrument selected.');
         return;
@@ -542,13 +553,6 @@ const submitForReview = async () => {
         emit('update:error',
             'An integrated proposal needs its proposal document attached. Upload it under '
             + 'Documents and set its type to "proposal".');
-        return;
-    }
-
-    const result = await formRef.value?.validate();
-    if (result && !result.valid) {
-        emit('update:error', 'Some required details are missing or invalid. They are highlighted below.');
-        focusFirstInvalid();
         return;
     }
 
