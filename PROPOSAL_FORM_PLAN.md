@@ -447,6 +447,22 @@ approval-reference field or helper text naming the separate process. Todd's call
 
 ---
 
+**Phase 3 status: done.** Frontend only; Phase 0 had already added `safety` to the backend
+schema. 21 Playwright assertions against the dev stack.
+
+- 3.3 took the lighter of the two options it offered: biosafety or radioactive ticked
+  raises a notice that separate institutional approval is normally needed and asks for it
+  in the description. **Still open for Todd:** whether that should instead be a structured
+  approval-reference field, which is the only version a reviewer could filter on.
+- The hazard checkboxes are driven by an explicit `toggleHazard` rather than `v-model` on
+  the array, because "None" has to clear the others and vice versa. A watcher would fight
+  the user's click on the way back out of the None state.
+- Worth knowing when writing tests against them: a `.v-checkbox` wrapper spans its grid
+  column, so a center-click lands beside the control. Address the input by its
+  `aria-label` instead.
+
+---
+
 ## Phase 4 — Team members (item 8)
 
 Blocked on **B2** only. D5 and D6 are settled: PI implies point of contact, and every

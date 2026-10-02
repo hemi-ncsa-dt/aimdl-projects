@@ -3,10 +3,10 @@ import { ref, watch, computed, onMounted, onBeforeUnmount } from 'vue';
 import { onBeforeRouteLeave } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 import { ProjectRole, FileType } from '@/types';
-import type { Project, ProjectMember, AutocompleteSuggestion, Person } from '@/types';
+import type { Project, ProjectMember, AutocompleteSuggestion, Person, SampleHazard, OtherHazard } from '@/types';
 import FileUploader from './FileUploader.vue';
 import MarkdownEditor from './MarkdownEditor.vue';
-import { VForm, VTextField, VBtn, VSelect, VIcon, VCombobox, VCheckbox, VDialog, VCard, VCardTitle, VCardText, VCardActions, VSpacer, VRadioGroup, VRadio } from 'vuetify/components';
+import { VForm, VTextField, VBtn, VSelect, VIcon, VCombobox, VCheckbox, VDialog, VCard, VCardTitle, VCardText, VCardActions, VSpacer, VRadioGroup, VRadio, VTextarea, VInput, VAlert } from 'vuetify/components';
 import { getOrcidSuggestions, searchUsers } from '@/services/api';
 import {
     KNOWN_INSTRUMENTS,
@@ -19,6 +19,10 @@ import {
     requiresPublicOverview,
     requiresProposalDocument,
     integratedProposalChecklist,
+    sampleHazardOptions,
+    otherHazardOptions,
+    hazardsDeclared,
+    HAZARDS_NEEDING_APPROVAL,
     DATA_POLICY_URL,
 } from '@/constants/project';
 import { debounce } from 'lodash';
@@ -63,6 +67,7 @@ const form = ref<Partial<Project> & { members: ProjectMember[] }>({
     assistanceRequired: undefined,
     daysRequested: '',
     experimentPlan: '',
+    safety: { sampleHazards: [], otherHazards: [], description: '' },
 });
 
 const orcidSuggestions = ref<AutocompleteSuggestion[]>([]);
@@ -114,6 +119,16 @@ const experimentPlanRule = [
     (v: string) => !!v?.trim() || 'Describe the experiments to be performed',
 ];
 
+// Leaving both lists blank must not read as "no hazards" -- that is what the None box is
+// for, and it has to be ticked deliberately.
+const sampleHazardRule = [
+    (v: string[]) => !!v?.length || 'Tick the hazards that apply, or None',
+];
+
+const otherHazardRule = [
+    (v: string[]) => !!v?.length || 'Tick the hazards that apply, or None',
+];
+
 const roleOptions = Object.values(ProjectRole);
 
 // Development projects are lab staff changing AIMD-L infrastructure (2.5). The submitter
@@ -146,6 +161,35 @@ const showInternalBudget = computed(() => form.value.accessCategory === 'jhu');
 const showFunding = computed(() => showGrants.value || showInternalBudget.value);
 
 const needsPublicOverview = computed(() => requiresPublicOverview(form.value.dataClassification));
+
+const hazardsPresent = computed(() =>
+    hazardsDeclared(form.value.safety?.sampleHazards, form.value.safety?.otherHazards)
+);
+
+const needsSeparateApproval = computed(() =>
+    (form.value.safety?.sampleHazards || []).some(h => HAZARDS_NEEDING_APPROVAL.includes(h))
+);
+
+const hazardDescriptionRule = computed(() => hazardsPresent.value
+    ? [(v: string) => !!v?.trim() || 'Describe the hazard(s) you have ticked']
+    : []);
+
+/** "None" and a named hazard cannot both be true, so each clears the other. Written as an
+ *  explicit toggle rather than a watcher: a watcher on the array would fight the user's
+ *  click on the way back out of the None state. */
+function toggleHazard<T extends string>(list: T[], value: T): T[] {
+    if (list.includes(value)) return list.filter(h => h !== value);
+    if (value === 'none') return ['none' as T];
+    return [...list.filter(h => h !== ('none' as T)), value];
+}
+
+function toggleSampleHazard(value: SampleHazard) {
+    form.value.safety!.sampleHazards = toggleHazard(form.value.safety!.sampleHazards, value);
+}
+
+function toggleOtherHazard(value: OtherHazard) {
+    form.value.safety!.otherHazards = toggleHazard(form.value.safety!.otherHazards, value);
+}
 
 function addGrant() {
     form.value.funding!.grants.push({ agency: '', grantNumber: '' });
@@ -246,6 +290,11 @@ watch(() => props.project, (source) => {
         assistanceRequired: source.assistanceRequired,
         daysRequested: source.daysRequested || '',
         experimentPlan: source.experimentPlan || '',
+        safety: {
+            sampleHazards: [...(source.safety?.sampleHazards || [])],
+            otherHazards: [...(source.safety?.otherHazards || [])],
+            description: source.safety?.description || '',
+        },
     };
     initInstruments(source.instruments);
     // Defer so the instruments watcher has rewritten form.instruments before we snapshot;
@@ -353,7 +402,7 @@ const buildPayload = (): Partial<Project> => {
     const {
         name, description, status, members, samples, files, projectType, instruments,
         accessCategory, organization, dataClassification, funding,
-        assistanceRequired, daysRequested, experimentPlan,
+        assistanceRequired, daysRequested, experimentPlan, safety,
     } = form.value;
     return {
         name: name || '',
@@ -377,6 +426,11 @@ const buildPayload = (): Partial<Project> => {
         assistanceRequired,
         daysRequested: daysRequested || '',
         experimentPlan: experimentPlan || '',
+        safety: {
+            sampleHazards: safety?.sampleHazards || [],
+            otherHazards: safety?.otherHazards || [],
+            description: safety?.description || '',
+        },
     };
 };
 
@@ -579,6 +633,49 @@ const cancel = () => {
         </section>
 
         <section class="form-card">
+            <h2 class="section-title">Safety</h2>
+            <p class="section-hint">
+                Tell us about anything hazardous you will bring or create. Tick
+                <em>None</em> if there is nothing in a list.
+            </p>
+
+            <div class="hazard-groups">
+                <v-input :model-value="form.safety!.sampleHazards" :rules="sampleHazardRule"
+                    hide-details="auto" class="hazard-group">
+                    <div>
+                        <h3 class="hazard-group__title">Samples</h3>
+                        <v-checkbox v-for="hazard in sampleHazardOptions" :key="hazard.value"
+                            :model-value="form.safety!.sampleHazards.includes(hazard.value)"
+                            :label="hazard.title" hide-details density="compact"
+                            @update:model-value="toggleSampleHazard(hazard.value)" />
+                    </div>
+                </v-input>
+
+                <v-input :model-value="form.safety!.otherHazards" :rules="otherHazardRule"
+                    hide-details="auto" class="hazard-group">
+                    <div>
+                        <h3 class="hazard-group__title">Other hazards</h3>
+                        <v-checkbox v-for="hazard in otherHazardOptions" :key="hazard.value"
+                            :model-value="form.safety!.otherHazards.includes(hazard.value)"
+                            :label="hazard.title" hide-details density="compact"
+                            @update:model-value="toggleOtherHazard(hazard.value)" />
+                    </div>
+                </v-input>
+            </div>
+
+            <v-textarea v-model="form.safety!.description"
+                :label="`Description of the hazard(s)${hazardsPresent ? ' *' : ''}`"
+                :rules="hazardDescriptionRule" rows="3" auto-grow class="mt-4" />
+
+            <v-alert v-if="needsSeparateApproval" type="info" variant="tonal" density="compact"
+                class="mt-2">
+                Biosafety and radioactive materials normally need separate institutional
+                approval before work can start. Note the approval or its status in the
+                description above, and AIMD-L staff will follow up.
+            </v-alert>
+        </section>
+
+        <section class="form-card">
             <h2 class="section-title">Team members</h2>
             <div v-for="(member, index) in form.members" :key="index" class="member-row">
                 <v-combobox v-model="member.firstName" :items="firstNameSuggestions" label="First Name"
@@ -730,6 +827,29 @@ const cancel = () => {
     .member-row > .v-btn {
         justify-self: start;
     }
+}
+
+.hazard-groups {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(14rem, 1fr));
+    gap: 16px 24px;
+}
+
+@media (max-width: 1023.98px) {
+    .hazard-groups {
+        grid-template-columns: 1fr;
+    }
+}
+
+.hazard-group :deep(.v-input__control) {
+    display: block;
+}
+
+.hazard-group__title {
+    font-size: 14px;
+    font-weight: 500;
+    margin: 0 0 4px;
+    color: var(--c-text-muted);
 }
 
 .proposal-checklist {

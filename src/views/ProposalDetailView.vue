@@ -33,6 +33,38 @@
             </p>
         </div>
 
+        <!-- Safety: directly below the header, so it cannot be scrolled past (3.2) -->
+        <div v-if="hasSafetyAnswer" class="proposal-detail-card"
+            :class="{ 'proposal-detail-card--hazard': declaredHazards }">
+            <h2 class="section-title">Safety</h2>
+            <dl class="detail-grid">
+                <dt>Samples</dt>
+                <dd>
+                    <div v-if="sampleHazardLabels.length" class="instrument-list">
+                        <span v-for="label in sampleHazardLabels" :key="label" class="instrument-chip">
+                            {{ label }}
+                        </span>
+                    </div>
+                    <span v-else class="detail-unset">Not declared</span>
+                </dd>
+
+                <dt>Other hazards</dt>
+                <dd>
+                    <div v-if="otherHazardLabels.length" class="instrument-list">
+                        <span v-for="label in otherHazardLabels" :key="label" class="instrument-chip">
+                            {{ label }}
+                        </span>
+                    </div>
+                    <span v-else class="detail-unset">Not declared</span>
+                </dd>
+
+                <template v-if="safety?.description">
+                    <dt>Description</dt>
+                    <dd>{{ safety.description }}</dd>
+                </template>
+            </dl>
+        </div>
+
         <!-- Details Section -->
         <div class="proposal-detail-card">
             <h2 class="section-title">Project Details</h2>
@@ -208,6 +240,10 @@ import {
     requiresPublicOverview,
     instrumentExpansion,
     fileTypeLabel,
+    sampleHazardOptions,
+    otherHazardOptions,
+    hazardLabels,
+    hazardsDeclared,
 } from '@/constants/project';
 import { useAuthStore } from '@/stores/auth';
 import { VIcon } from 'vuetify/components';
@@ -222,6 +258,23 @@ const { currentProject: project, loading, error } = storeToRefs(projectStore);
 onMounted(() => {
     projectStore.fetchProject(route.params.id as string);
 });
+
+// 3.2: hazards belong where a reviewer cannot scroll past them, not below the file list.
+const safety = computed(() => project.value?.safety);
+
+const declaredHazards = computed(() => hazardsDeclared(
+    safety.value?.sampleHazards, safety.value?.otherHazards,
+));
+
+const hasSafetyAnswer = computed(() =>
+    !!(safety.value?.sampleHazards?.length || safety.value?.otherHazards?.length)
+);
+
+const sampleHazardLabels = computed(() =>
+    hazardLabels(safety.value?.sampleHazards, sampleHazardOptions));
+
+const otherHazardLabels = computed(() =>
+    hazardLabels(safety.value?.otherHazards, otherHazardOptions));
 
 const hasFunding = computed(() => {
     const funding = project.value?.funding;
@@ -273,6 +326,11 @@ function getDownloadUrl(fileId: string): string {
 </script>
 
 <style scoped>
+/* A declared hazard gets a visible edge; "None everywhere" stays a plain card. */
+.proposal-detail-card--hazard {
+    border-left: 4px solid var(--c-warning);
+}
+
 .navigation-header {
     margin-bottom: 16px;
 }

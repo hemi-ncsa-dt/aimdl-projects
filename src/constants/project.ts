@@ -1,5 +1,5 @@
 import { FileType } from '@/types';
-import type { AccessCategory, DataClassification, ProjectType } from '@/types';
+import type { AccessCategory, DataClassification, ProjectType, SampleHazard, OtherHazard } from '@/types';
 
 export interface InstrumentOption {
     value: string;
@@ -200,4 +200,47 @@ export const fileTypeOptions: FileTypeOption[] = [
 
 export function fileTypeLabel(value: string | undefined): string {
     return fileTypeOptions.find(o => o.value === value)?.title || value || 'Other';
+}
+
+
+export interface HazardOption<T> {
+    value: T;
+    title: string;
+}
+
+export const sampleHazardOptions: HazardOption<SampleHazard>[] = [
+    { value: 'none', title: 'None' },
+    { value: 'toxic', title: 'Toxic' },
+    { value: 'flammable', title: 'Flammable' },
+    { value: 'energetic', title: 'Energetic' },
+    { value: 'biosafety', title: 'Biosafety' },
+    { value: 'radioactive', title: 'Radioactive' },
+    { value: 'other', title: 'Other' },
+];
+
+export const otherHazardOptions: HazardOption<OtherHazard>[] = [
+    { value: 'none', title: 'None' },
+    { value: 'laser', title: 'Laser (class 3-4)' },
+    { value: 'high-temperature', title: 'High temperature' },
+    { value: 'high-voltage', title: 'High voltage' },
+    { value: 'user-equipment', title: 'Custom or user-supplied equipment' },
+];
+
+/** Hazards that normally need a separate institutional approval before work can start. */
+export const HAZARDS_NEEDING_APPROVAL: SampleHazard[] = ['biosafety', 'radioactive'];
+
+export function hazardLabels(
+    values: readonly string[] | undefined,
+    options: HazardOption<string>[],
+): string[] {
+    return (values || []).map(v => options.find(o => o.value === v)?.title || v);
+}
+
+/** A hazard declared with no description is worse than no checklist, so the text becomes
+ *  required as soon as anything other than "none" is ticked in either list. */
+export function hazardsDeclared(
+    sampleHazards: readonly string[] | undefined,
+    otherHazards: readonly string[] | undefined,
+): boolean {
+    return [...(sampleHazards || []), ...(otherHazards || [])].some(h => h !== 'none');
 }

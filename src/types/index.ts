@@ -18,6 +18,18 @@ export type DataClassification =
     | 'confidential-controlled'
     | 'opt-out';
 
+export type SampleHazard =
+    | 'none' | 'toxic' | 'flammable' | 'energetic' | 'biosafety' | 'radioactive' | 'other';
+
+export type OtherHazard =
+    | 'none' | 'laser' | 'high-temperature' | 'high-voltage' | 'user-equipment';
+
+export interface Safety {
+    sampleHazards: SampleHazard[];
+    otherHazards: OtherHazard[];
+    description: string;
+}
+
 export interface Grant {
     agency: string;
     grantNumber: string;
@@ -70,6 +82,7 @@ export interface Project {
     daysRequested?: string;
     /** The proposal itself, for the types that write it inline rather than upload a PDF. */
     experimentPlan?: string;
+    safety?: Safety;
 }
 
 export interface Sample {
