@@ -23,7 +23,10 @@ import {
     otherHazardOptions,
     hazardsDeclared,
     HAZARDS_NEEDING_APPROVAL,
+    memberStatusOptions,
+    roleOptions,
     DATA_POLICY_URL,
+    ORCID_REGISTER_URL,
 } from '@/constants/project';
 import { debounce } from 'lodash';
 
@@ -129,7 +132,6 @@ const otherHazardRule = [
     (v: string[]) => !!v?.length || 'Tick the hazards that apply, or None',
 ];
 
-const roleOptions = Object.values(ProjectRole);
 
 // Development projects are lab staff changing AIMD-L infrastructure (2.5). The submitter
 // is known to the reviewers, so the form stops asking them to introduce themselves --
@@ -275,6 +277,10 @@ watch(() => props.project, (source) => {
             orcidId: m.orcidId || '',
             role: m.role,
             userId: m.userId || null,
+            isPointOfContact: m.isPointOfContact ?? false,
+            onSite: m.onSite ?? false,
+            status: m.status,
+            institution: m.institution || '',
         })),
         samples: source.samples || [],
         files: source.files || [],
@@ -391,8 +397,50 @@ const addMember = () => {
         orcidId: '',
         role: ProjectRole.USER,
         userId: null,
+        isPointOfContact: false,
+        onSite: false,
+        status: undefined,
+        institution: '',
     });
 };
+
+const isPI = (member: ProjectMember) => member.role === ProjectRole.PI;
+
+/**
+ * There is exactly one PI, and ticking the box moves the role rather than adding a second
+ * one. `role` is the stored access level the backend acts on, so the checkbox drives it
+ * instead of living beside it (B2). The point of contact follows the PI by default -- it
+ * is a separate, movable flag, so it only follows when nobody else holds it.
+ */
+const setPI = (member: ProjectMember, value: boolean) => {
+    if (!value) {
+        member.role = ProjectRole.USER;
+        return;
+    }
+    form.value.members.forEach((m) => {
+        if (m !== member && m.role === ProjectRole.PI) m.role = ProjectRole.USER;
+    });
+    member.role = ProjectRole.PI;
+    if (!form.value.members.some(m => m.isPointOfContact)) {
+        member.isPointOfContact = true;
+    }
+};
+
+/** Exactly one contact: ticking a new one releases the old. */
+const setPointOfContact = (member: ProjectMember, value: boolean) => {
+    if (value) {
+        form.value.members.forEach((m) => { m.isPointOfContact = m === member; });
+    } else {
+        member.isPointOfContact = false;
+    }
+};
+
+const piCount = computed(() => form.value.members.filter(isPI).length);
+const contactCount = computed(() => form.value.members.filter(m => m.isPointOfContact).length);
+
+const memberStatusRule = [
+    (v: string) => !!v || 'Status is required',
+];
 
 const removeMember = (index: number) => {
     form.value.members.splice(index, 1);
@@ -473,6 +521,20 @@ const save = () => {
 const submitForReview = async () => {
     if (singleInstrumentConflict.value) {
         emit('update:error', 'Single-instrument project requires exactly one instrument selected.');
+        return;
+    }
+
+    if (piCount.value !== 1) {
+        emit('update:error', piCount.value === 0
+            ? 'Tick the PI on one of the team members.'
+            : 'Only one team member can be the PI.');
+        return;
+    }
+
+    if (contactCount.value !== 1) {
+        emit('update:error', contactCount.value === 0
+            ? 'Tick the point of contact on one of the team members.'
+            : 'Only one team member can be the point of contact.');
         return;
     }
 
@@ -677,22 +739,55 @@ const cancel = () => {
 
         <section class="form-card">
             <h2 class="section-title">Team members</h2>
-            <div v-for="(member, index) in form.members" :key="index" class="member-row">
-                <v-combobox v-model="member.firstName" :items="firstNameSuggestions" label="First Name"
-                    @update:search="onUserSearch" @update:model-value="(value: string) => onFirstNameChange(value, member)">
-                </v-combobox>
-                <v-combobox v-model="member.lastName" :items="lastNameSuggestions" label="Last Name"
-                    @update:search="onUserSearch" @update:model-value="(value: string) => onLastNameChange(value, member)">
-                </v-combobox>
-                <v-text-field v-model="member.email" label="Email *" :rules="emailRule"></v-text-field>
-                <v-combobox v-model="member.orcidId" :items="orcidSuggestions" item-title="text" item-value="text"
-                    :return-object="false" label="ORCID iD *" :rules="orcidRule"
-                    @focus="onOrcidFocus(member)" @blur="onOrcidBlur"
-                    @update:modelValue="(value: string) => onOrcidSelect(value, member)"></v-combobox>
-                <v-select v-model="member.role" :items="roleOptions" label="Role"></v-select>
-                <v-btn icon variant="text" :aria-label="`Remove member ${index + 1}`" @click="removeMember(index)">
-                    <v-icon>mdi-delete</v-icon>
-                </v-btn>
+            <p class="section-hint">
+                An ORCID iD is required for everyone listed: the proposal is registered with
+                ORCID once it is accepted.
+                <a :href="ORCID_REGISTER_URL" target="_blank" rel="noopener noreferrer">
+                    Get an ORCID iD
+                </a>
+                if you do not have one.
+            </p>
+
+            <div v-for="(member, index) in form.members" :key="index" class="member-card">
+                <div class="member-card__row">
+                    <v-combobox v-model="member.firstName" :items="firstNameSuggestions" label="First Name"
+                        @update:search="onUserSearch" @update:model-value="(value: string) => onFirstNameChange(value, member)">
+                    </v-combobox>
+                    <v-combobox v-model="member.lastName" :items="lastNameSuggestions" label="Last Name"
+                        @update:search="onUserSearch" @update:model-value="(value: string) => onLastNameChange(value, member)">
+                    </v-combobox>
+                    <v-text-field v-model="member.email" label="Email *" :rules="emailRule"></v-text-field>
+                </div>
+
+                <div class="member-card__row">
+                    <v-combobox v-model="member.orcidId" :items="orcidSuggestions" item-title="text" item-value="text"
+                        :return-object="false" label="ORCID iD *" :rules="orcidRule"
+                        @focus="onOrcidFocus(member)" @blur="onOrcidBlur"
+                        @update:modelValue="(value: string) => onOrcidSelect(value, member)"></v-combobox>
+                    <v-select v-model="member.status" :items="memberStatusOptions" item-title="title"
+                        item-value="value" label="Status *" :rules="memberStatusRule" />
+                    <v-text-field v-model="member.institution" label="Institution"
+                        placeholder="Same as the PI's" />
+                </div>
+
+                <div class="member-card__flags">
+                    <v-checkbox :model-value="isPI(member)" label="PI" hide-details density="compact"
+                        @update:model-value="(v: boolean | null) => setPI(member, !!v)" />
+                    <v-checkbox :model-value="member.isPointOfContact" label="Point of contact"
+                        hide-details density="compact"
+                        @update:model-value="(v: boolean | null) => setPointOfContact(member, !!v)" />
+                    <v-checkbox v-model="member.onSite" label="Coming to AIMD-L" hide-details
+                        density="compact" />
+                    <v-select v-if="!isPI(member)" v-model="member.role" :items="roleOptions"
+                        item-title="title" item-value="value" label="Data access" density="compact"
+                        hide-details class="member-card__access" />
+                    <span v-else class="member-card__access-fixed">Data access: full (PI)</span>
+                    <v-spacer />
+                    <v-btn icon variant="text" :aria-label="`Remove member ${index + 1}`"
+                        @click="removeMember(index)">
+                        <v-icon>mdi-delete</v-icon>
+                    </v-btn>
+                </div>
             </div>
             <v-btn @click="addMember" class="my-2">Add Member</v-btn>
         </section>
@@ -803,29 +898,46 @@ const cancel = () => {
     color: var(--c-text);
 }
 
-/* One shared template, so every member row's columns line up (2.1). The minimums stop
-   fields collapsing into unreadable slivers; below the D2 laptop floor the row wraps
-   instead of compressing further. */
-.member-row {
-    display: grid;
-    grid-template-columns:
-        minmax(9rem, 1fr) minmax(9rem, 1fr) minmax(14rem, 1.6fr)
-        minmax(12rem, 1.4fr) minmax(8rem, 0.9fr) auto;
-    gap: 0 12px;
-    align-items: start;
-    margin: 8px 0;
+/* Eleven controls per person no longer fit one row, so each member is a bordered card of
+   three bands. Within a band the columns still line up across members, which is the
+   property the single-row grid was there for (2.1). */
+.member-card {
+    border: 1px solid var(--c-border);
+    border-radius: var(--radius);
+    padding: 12px 16px 4px;
+    margin: 12px 0;
 }
 
-/* 1024px is the supported floor (D2) and the full row still fits there. Below it, wrap to
-   two equal columns rather than letting fields fall into the icon-sized track. */
+.member-card__row {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(12rem, 1fr));
+    gap: 0 12px;
+    align-items: start;
+}
+
+.member-card__flags {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 20px;
+    padding-bottom: 8px;
+}
+
+.member-card__access {
+    max-width: 16rem;
+}
+
+.member-card__access-fixed {
+    font-size: 13px;
+    color: var(--c-text-muted);
+}
+
+/* 1024px is the supported floor (D2). Below it the bands stack two-up rather than letting
+   fields compress into slivers. */
 @media (max-width: 1023.98px) {
-    .member-row {
+    .member-card__row {
         grid-template-columns: minmax(10rem, 1fr) minmax(10rem, 1fr);
         row-gap: 4px;
-    }
-
-    .member-row > .v-btn {
-        justify-self: start;
     }
 }
 

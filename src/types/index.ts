@@ -158,11 +158,20 @@ export interface Item {
     updated: Date;
 }
 
+/**
+ * The access level a member gets on the project's data once it is accepted, not a job
+ * title. The backend maps it in `lib/events.py:_role_to_access_level` (PI -> ADMIN,
+ * manager -> WRITE, user -> READ) and picks PIs as the recipients of decision e-mail, so
+ * it cannot be replaced by `MemberStatus`. The form labels it "Data access".
+ */
 export enum ProjectRole {
     PI = 'PI',
     MANAGER = 'manager',
     USER = 'user',
 }
+
+/** Career stage. Orthogonal to ProjectRole. */
+export type MemberStatus = 'faculty' | 'staff' | 'postdoc' | 'grad' | 'undergrad' | 'other';
 
 export interface ProjectMember {
     firstName: string;
@@ -171,6 +180,13 @@ export interface ProjectMember {
     role: ProjectRole;
     email: string;
     userId: string | null;
+    /** Day-to-day contact. Defaults to the PI but can be moved to anyone. */
+    isPointOfContact?: boolean;
+    /** False for members taking part only remotely. */
+    onSite?: boolean;
+    status?: MemberStatus;
+    /** Only set when it differs from the project's organization. */
+    institution?: string;
 }
 
 export interface AutocompleteSuggestion {

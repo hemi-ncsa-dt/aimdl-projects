@@ -539,6 +539,22 @@ pass bought, where every row's fields line up.
 
 ---
 
+**Phase 4 status: done.** Frontend only. 31 Playwright assertions against the dev stack.
+
+- B2 held: `role` is still the stored access axis and the PI checkbox drives it, so
+  `_role_to_access_level` and the decision-mail recipients keep working untouched. What
+  changed is the label — the form and detail view say what the level *does* ("Can add and
+  edit data" / "Can view data" / "Full access (PI)") instead of "manager", and the PI's
+  level is stated rather than editable.
+- `status` is a separate required field, as asked.
+- Ticking PI moves the flag rather than adding a second; the contact follows a new PI only
+  when nobody else holds it, so it stays movable. Both are enforced at submit.
+- 4.5 landed as predicted: eleven controls would not fit the old six-column grid, so each
+  member is now a bordered three-band card. Columns still line up across members within a
+  band, which is what the single-row grid existed for.
+
+---
+
 ## Phase 5 — Reviewer-side parity
 
 ### 5.1 Detail view renders every new field — **Straightforward**

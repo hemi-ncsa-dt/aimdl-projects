@@ -1,5 +1,6 @@
 import { FileType } from '@/types';
-import type { AccessCategory, DataClassification, ProjectType, SampleHazard, OtherHazard } from '@/types';
+import { ProjectRole } from '@/types';
+import type { AccessCategory, DataClassification, ProjectType, SampleHazard, OtherHazard, MemberStatus } from '@/types';
 
 export interface InstrumentOption {
     value: string;
@@ -244,3 +245,42 @@ export function hazardsDeclared(
 ): boolean {
     return [...(sampleHazards || []), ...(otherHazards || [])].some(h => h !== 'none');
 }
+
+
+export interface MemberStatusOption {
+    value: MemberStatus;
+    title: string;
+}
+
+export const memberStatusOptions: MemberStatusOption[] = [
+    { value: 'faculty', title: 'Faculty / senior investigator' },
+    { value: 'staff', title: 'Staff' },
+    { value: 'postdoc', title: 'Post-doc' },
+    { value: 'grad', title: 'Graduate student' },
+    { value: 'undergrad', title: 'Undergraduate' },
+    { value: 'other', title: 'Other' },
+];
+
+export function memberStatusLabel(value: MemberStatus | undefined): string | undefined {
+    return memberStatusOptions.find(o => o.value === value)?.title;
+}
+
+export interface RoleOption {
+    value: ProjectRole;
+    title: string;
+}
+
+/** `role` is the access level a member gets on the project's data once it is accepted --
+ *  the backend turns it into a Girder permission. "Manager" said nothing about that, so
+ *  the form names the effect instead. The PI's level is set by the PI checkbox. */
+export const roleOptions: RoleOption[] = [
+    { value: ProjectRole.MANAGER, title: 'Can add and edit data' },
+    { value: ProjectRole.USER, title: 'Can view data' },
+];
+
+export function roleLabel(value: ProjectRole | undefined): string {
+    if (value === ProjectRole.PI) return 'Full access (PI)';
+    return roleOptions.find(o => o.value === value)?.title || value || '';
+}
+
+export const ORCID_REGISTER_URL = 'https://orcid.org/register';

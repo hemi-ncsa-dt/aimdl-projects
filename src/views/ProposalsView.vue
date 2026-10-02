@@ -28,6 +28,11 @@ async function startNewProposal() {
             orcidId: '',
             role: ProjectRole.PI,
             userId: authStore.user._id,
+            // Seeded, not decided: whoever opens the draft is often doing it on someone
+            // else's behalf. Moving the PI tick in the form carries the contact with it.
+            isPointOfContact: true,
+            onSite: false,
+            institution: '',
         });
     }
     await projectStore.createProject({

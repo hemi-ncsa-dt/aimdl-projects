@@ -181,12 +181,21 @@
                             <div class="member-name">{{ member.firstName }} {{ member.lastName }}</div>
                             <div class="member-email">{{ member.email }}</div>
                             <div class="member-orcid">ORCID: {{ member.orcidId }}</div>
+                            <div v-if="member.status" class="member-meta">
+                                {{ memberStatusLabel(member.status) }}
+                            </div>
+                            <div v-if="member.institution" class="member-meta">
+                                {{ member.institution }}
+                            </div>
                         </div>
                     </div>
                     <div class="member-role">
-                        <span class="role-badge" :class="`role-badge--${member.role.toLowerCase()}`">
-                            {{ member.role }}
+                        <span v-if="member.role === 'PI'" class="role-badge role-badge--pi">PI</span>
+                        <span v-if="member.isPointOfContact" class="role-badge role-badge--contact">
+                            Point of contact
                         </span>
+                        <span v-if="member.onSite" class="role-badge role-badge--onsite">On site</span>
+                        <span class="member-access">{{ roleLabel(member.role) }}</span>
                     </div>
                 </div>
             </div>
@@ -244,6 +253,8 @@ import {
     otherHazardOptions,
     hazardLabels,
     hazardsDeclared,
+    memberStatusLabel,
+    roleLabel,
 } from '@/constants/project';
 import { useAuthStore } from '@/stores/auth';
 import { VIcon } from 'vuetify/components';
@@ -329,6 +340,24 @@ function getDownloadUrl(fileId: string): string {
 /* A declared hazard gets a visible edge; "None everywhere" stays a plain card. */
 .proposal-detail-card--hazard {
     border-left: 4px solid var(--c-warning);
+}
+
+.member-meta {
+    font-size: 13px;
+    color: var(--c-text-muted);
+}
+
+.member-role {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 6px;
+}
+
+.member-access {
+    font-size: 12px;
+    color: var(--c-text-muted);
 }
 
 .navigation-header {
@@ -555,12 +584,12 @@ function getDownloadUrl(fileId: string): string {
     color: white;
 }
 
-.role-badge--manager {
+.role-badge--contact {
     background-color: var(--c-secondary);
     color: rgba(0, 0, 0, 0.87);
 }
 
-.role-badge--user {
+.role-badge--onsite {
     background-color: var(--c-border);
     color: rgba(0, 0, 0, 0.87);
 }
