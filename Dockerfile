@@ -9,6 +9,7 @@ RUN npm run build
 FROM nginxinc/nginx-unprivileged:stable-alpine
 
 COPY --from=builder --chown=nginx:nginx /app/dist /usr/share/nginx/html
+COPY --chown=nginx:nginx ./nginx.conf /etc/nginx/conf.d/default.conf
 COPY --chown=nginx:nginx ./99-vite-envsubst.sh /docker-entrypoint.d/99-vite-envsubst.sh
 
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \

@@ -83,6 +83,7 @@ const API_BASE_URL = (window as any).ENV?.VITE_API_BASE_URL || import.meta.env.V
 ## Ports
 
 - Application runs on port 8080 (non-privileged port for non-root user)
+- `nginx.conf` replaces the image's default server block: unknown paths fall back to `index.html` so client-side routes (e.g. `/proposals/<id>`) survive a reload
 
 ## Health Check
 
