@@ -10,7 +10,7 @@
         <div class="proposal-detail-card">
             <div class="proposal-detail-header">
                 <h1 class="proposal-detail-title">{{ project.projectId }}: {{ project.name }}</h1>
-                <div>
+                <div class="proposal-detail-actions">
                     <span class="status-chip" :class="getStatusChipClass(project.status)">
                         {{ project.status }}
                     </span>
@@ -387,15 +387,25 @@ function getDownloadUrl(fileId: string): string {
     padding: 24px;
 }
 
+/* The title takes the slack and wraps; the actions stay one unbroken row and drop
+   below the title only once the card is too narrow for both side by side. */
 .proposal-detail-header {
     display: flex;
+    flex-wrap: wrap;
     justify-content: space-between;
-    align-items: center;
+    align-items: flex-start;
+    gap: 12px 16px;
     margin-bottom: 16px;
 }
 
+.proposal-detail-actions {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: 16px;
+}
+
 .edit-button {
-    margin-left: 16px;
     background-color: var(--c-primary);
     color: white;
     border: none;
@@ -405,7 +415,6 @@ function getDownloadUrl(fileId: string): string {
 }
 
 .delete-button {
-    margin-left: 16px;
     background-color: var(--c-danger);
     color: white;
     border: none;
@@ -415,6 +424,9 @@ function getDownloadUrl(fileId: string): string {
 }
 
 .proposal-detail-title {
+    flex: 1 1 20rem;
+    min-width: 0;
+    overflow-wrap: anywhere;
     font-size: 24px;
     font-weight: 400;
     margin: 0;
