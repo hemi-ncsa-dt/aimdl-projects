@@ -10,10 +10,17 @@ const API_BASE_URL = (window as any).ENV?.VITE_API_BASE_URL || import.meta.env.V
  * container is pointed at a different backend. The token goes in the query string
  * because a browser-initiated download (`<a href>`) cannot set the Girder-Token header,
  * and Girder answers 401 without it.
+ *
+ * With `inline`, Girder sends `Content-Disposition: inline`, so a browser that can render
+ * the file (a PDF, an image) shows it in the tab instead of saving it.
  */
-export function getFileDownloadUrl(fileId: string, token?: string | null): string {
+export function getFileDownloadUrl(fileId: string, token?: string | null, inline = false): string {
+    const params = new URLSearchParams();
+    if (token) params.set('token', token);
+    if (inline) params.set('contentDisposition', 'inline');
+    const query = params.toString();
     const url = `${API_BASE_URL}/file/${fileId}/download`;
-    return token ? `${url}?token=${encodeURIComponent(token)}` : url;
+    return query ? `${url}?${query}` : url;
 }
 
 async function handleResponse<T>(response: Response): Promise<T> {

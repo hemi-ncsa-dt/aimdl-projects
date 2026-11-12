@@ -3,7 +3,7 @@ import { ref, computed, onMounted } from 'vue';
 import { VFileInput, VSelect, VBtn, VProgressLinear, VCard, VCardText, VIcon } from 'vuetify/components';
 import { FileType, type ProjectFile, type FileUploadResult } from '@/types';
 import { fileTypeOptions } from '@/constants/project';
-import { initiateUpload, uploadChunk, getFileDetails, deleteItem } from '@/services/api';
+import { initiateUpload, uploadChunk, getFileDetails, deleteItem, getFileDownloadUrl } from '@/services/api';
 import { useAuthStore } from '@/stores/auth';
 
 const props = defineProps<{
@@ -200,6 +200,10 @@ const isUploading = computed(() => uploadingFiles.value.size > 0);
                         <div class="font-weight-medium">{{ getFileName(file) }}</div>
                         <div class="text-caption text-grey">{{ getFileSize(file) }}</div>
                     </div>
+                    <v-btn icon size="small" class="ml-2" :href="getFileDownloadUrl(file.fileId, authStore.token, true)"
+                        target="_blank" rel="noopener" :aria-label="`View ${getFileName(file)}`" title="View file">
+                        <v-icon>mdi-eye</v-icon>
+                    </v-btn>
                     <v-btn icon size="small" class="ml-2" @click="removeUploadedFile(index)">
                         <v-icon>mdi-delete</v-icon>
                     </v-btn>

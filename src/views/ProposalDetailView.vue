@@ -219,9 +219,15 @@
                         </div>
                         <div class="file-type">{{ fileTypeLabel(file.type) }}</div>
                         <div class="file-size">{{ formatFileSize(file.size) }}</div>
-                        <a :href="getDownloadUrl(file.fileId)" class="download-link" title="Download file">
-                            <v-icon>mdi-download</v-icon>
-                        </a>
+                        <div class="file-actions">
+                            <a :href="getDownloadUrl(file.fileId, true)" target="_blank" rel="noopener"
+                                class="download-link" title="View file">
+                                <v-icon>mdi-eye</v-icon>
+                            </a>
+                            <a :href="getDownloadUrl(file.fileId)" class="download-link" title="Download file">
+                                <v-icon>mdi-download</v-icon>
+                            </a>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -331,8 +337,8 @@ function formatFileSize(size: number | undefined): string {
     return `${fileSize.toFixed(2)} ${units[unitIndex]}`;
 }
 
-function getDownloadUrl(fileId: string): string {
-    return getFileDownloadUrl(fileId, authStore.token);
+function getDownloadUrl(fileId: string, inline = false): string {
+    return getFileDownloadUrl(fileId, authStore.token, inline);
 }
 </script>
 
@@ -635,7 +641,7 @@ function getDownloadUrl(fileId: string): string {
     grid-template-columns: 2fr 1fr 1fr;
     gap: 16px;
     padding: 12px 16px;
-    padding-right: 48px;
+    padding-right: 88px;
     border-bottom: 1px solid var(--c-border);
     align-items: center;
     transition: background-color 0.2s;
@@ -674,11 +680,16 @@ function getDownloadUrl(fileId: string): string {
     color: rgba(0, 0, 0, 0.6);
 }
 
-.download-link {
+.file-actions {
     position: absolute;
     right: 16px;
     top: 50%;
     transform: translateY(-50%);
+    display: flex;
+    gap: 4px;
+}
+
+.download-link {
     display: inline-flex;
     align-items: center;
     justify-content: center;
