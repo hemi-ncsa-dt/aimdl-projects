@@ -551,8 +551,8 @@ const submitForReview = async () => {
 
     if (needsProposalDocument.value && !hasProposalFile.value) {
         emit('update:error',
-            'An integrated proposal needs its proposal document attached. Upload it under '
-            + 'Documents and set its type to "proposal".');
+            'An integrated proposal needs its project description attached. Upload it in the '
+            + 'Project description section and set its file type to "Project description".');
         return;
     }
 
@@ -816,21 +816,21 @@ const cancel = () => {
         </section>
 
         <section class="form-card">
-            <h2 class="section-title">Documents</h2>
+            <h2 class="section-title">Project description</h2>
             <template v-if="needsProposalDocument">
                 <p class="section-hint">
                     An integrated campaign is proposed in an uploaded document &mdash; a PDF of
-                    at most two pages. Set its type to <em>proposal</em> after selecting it.
-                    It should cover:
+                    at most two pages. Set its type to <em>Project description</em> after
+                    selecting it. It should cover:
                 </p>
                 <ol class="proposal-checklist">
                     <li v-for="point in integratedProposalChecklist" :key="point">{{ point }}</li>
                 </ol>
             </template>
             <p v-else class="section-hint">
-                No proposal document is needed &mdash; the description above is the proposal.
-                Attach anything that supports it, and choose a type for each file after
-                selecting it.
+                No proposal document is needed &mdash; the description of experiments above
+                is the proposal. Attach anything that supports it, and choose a type for each
+                file after selecting it.
             </p>
             <p class="section-hint">
                 You may also attach a data management plan, if you have one.
@@ -887,7 +887,7 @@ const cancel = () => {
     margin-bottom: 16px;
 }
 
-/* One treatment for every peer section (3.4) — Instruments, Team members and Documents
+/* One treatment for every peer section (3.4) — Instruments, Team members and Project description
    previously used three different heading sizes. */
 .section-hint {
     margin: -8px 0 16px;

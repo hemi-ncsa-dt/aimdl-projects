@@ -194,7 +194,7 @@ export interface FileTypeOption {
 
 /** `dmp` on its own is unreadable in a dropdown, so the picker shows these. */
 export const fileTypeOptions: FileTypeOption[] = [
-    { value: FileType.PROPOSAL, title: 'Proposal' },
+    { value: FileType.PROPOSAL, title: 'Project description' },
     { value: FileType.DMP, title: 'Data management plan' },
     { value: FileType.OTHER, title: 'Other' },
 ];
