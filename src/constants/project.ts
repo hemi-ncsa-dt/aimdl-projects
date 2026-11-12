@@ -178,12 +178,14 @@ export function requiresProposalDocument(value: ProjectType | undefined): boolea
 
 /** What an integrated proposal has to cover. */
 export const integratedProposalChecklist = [
-    'Context and motivation for the experiment',
-    'Knowledge gap or scientific hypothesis to be addressed',
-    'Description of the experiments to be performed — stations used, kinds of samples, '
-    + 'measurements, and how the data will be analysed',
-    'Expected data and outcomes, and how they address the gap or answer the hypothesis',
-    'An estimate of the number of days required',
+    'Context and motivation for the experiment.',
+    'Knowledge gap or scientific hypothesis to be addressed.',
+    'Description of the experiments to be performed — stations used, '
+    + 'measurements, and how the data will be analysed.',
+    'Description of samples — composition, size/thickness, number, and '
+    + 'any unusual hazards.',
+    'Expected data and outcomes, and how they address the gap or answer the hypothesis.',
+    'An estimate of the number of days required.',
 ];
 
 
